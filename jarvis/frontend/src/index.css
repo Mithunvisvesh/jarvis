@@ -1,0 +1,174 @@
+:root {
+  --bg-primary: #050810;
+  --bg-secondary: rgba(11, 15, 26, 0.7);
+  --bg-tertiary: rgba(18, 24, 38, 0.85);
+  --bg-card: rgba(10, 14, 24, 0.6);
+  --accent-cyan: #00D4FF;
+  --accent-pink: #FF0080;
+  --accent-green: #00FF9F;
+  --accent-orange: #FF6B35;
+  --text-primary: #E2E8F0;
+  --text-secondary: #94A3B8;
+  --text-dark: #64748B;
+  --border-cyan: rgba(0, 212, 255, 0.25);
+  --border-pink: rgba(255, 0, 128, 0.25);
+  --border-muted: rgba(255, 255, 255, 0.08);
+  
+  --glow-cyan: 0 0 15px rgba(0, 212, 255, 0.35);
+  --glow-pink: 0 0 15px rgba(255, 0, 128, 0.35);
+  --glow-green: 0 0 15px rgba(0, 255, 159, 0.35);
+
+  --font-header: 'Exo 2', sans-serif;
+  --font-nav: 'Rajdhani', sans-serif;
+  --font-body: 'Inter', sans-serif;
+  --font-mono: 'Fira Code', monospace;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  overflow: hidden;
+  height: 100vh;
+  width: 100vw;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Custom Cyber Scrollbars */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-primary);
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(0, 212, 255, 0.2);
+  border-radius: 4px;
+  border: 1px solid rgba(0, 212, 255, 0.1);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--accent-cyan);
+  box-shadow: var(--glow-cyan);
+}
+
+/* Cybernetic Box styles */
+.cyber-panel {
+  background: var(--bg-card);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--border-muted);
+  border-left: 3px solid var(--accent-cyan);
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.5);
+  position: relative;
+  transition: all 0.3s ease;
+}
+
+.cyber-panel:hover {
+  border-color: rgba(0, 212, 255, 0.4);
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.7), 0 0 10px rgba(0, 212, 255, 0.1);
+}
+
+.cyber-panel-pink {
+  border-left: 3px solid var(--accent-pink);
+}
+
+.cyber-panel-pink:hover {
+  border-color: rgba(255, 0, 128, 0.4);
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.7), 0 0 10px rgba(255, 0, 128, 0.1);
+}
+
+/* Cyber Grid layout */
+.app-container {
+  display: grid;
+  grid-template-rows: 1fr 32px;
+  height: 100vh;
+  width: 100vw;
+  background-image: 
+    radial-gradient(circle at 10% 20%, rgba(0, 212, 255, 0.05) 0%, transparent 40%),
+    radial-gradient(circle at 90% 80%, rgba(255, 0, 128, 0.04) 0%, transparent 40%);
+}
+
+.main-layout {
+  display: grid;
+  grid-template-columns: 64px 1fr 280px;
+  height: 100%;
+  overflow: hidden;
+}
+
+@media (max-width: 1024px) {
+  .main-layout {
+    grid-template-columns: 64px 1fr;
+  }
+  .right-sidebar {
+    display: none;
+  }
+}
+
+/* Scanline and Grid Overlay for cinematic effect */
+.grid-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: 
+    linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), 
+    linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+  background-size: 100% 4px, 6px 100%;
+  pointer-events: none;
+  z-index: 9999;
+  opacity: 0.3;
+}
+
+/* Animations */
+@keyframes pulse-cyan {
+  0% {
+    box-shadow: 0 0 5px rgba(0, 212, 255, 0.2), inset 0 0 5px rgba(0, 212, 255, 0.1);
+  }
+  50% {
+    box-shadow: 0 0 20px rgba(0, 212, 255, 0.5), inset 0 0 10px rgba(0, 212, 255, 0.25);
+  }
+  100% {
+    box-shadow: 0 0 5px rgba(0, 212, 255, 0.2), inset 0 0 5px rgba(0, 212, 255, 0.1);
+  }
+}
+
+@keyframes pulse-pink {
+  0% {
+    box-shadow: 0 0 5px rgba(255, 0, 128, 0.2);
+  }
+  50% {
+    box-shadow: 0 0 20px rgba(255, 0, 128, 0.5);
+  }
+  100% {
+    box-shadow: 0 0 5px rgba(255, 0, 128, 0.2);
+  }
+}
+
+@keyframes text-flicker {
+  0% { opacity: 0.98; }
+  50% { opacity: 1; }
+  100% { opacity: 0.99; }
+}
+
+.thinking-pulse {
+  animation: pulse-cyan 2s infinite ease-in-out;
+}
+
+.pink-pulse {
+  animation: pulse-pink 2s infinite ease-in-out;
+}
+
+.flicker {
+  animation: text-flicker 0.15s infinite;
+}
