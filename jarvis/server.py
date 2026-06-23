@@ -162,3 +162,48 @@ async def chat_endpoint(request: JarvisRequest, use_workflow: bool = Query(True)
         raise HTTPException(status_code=422, detail=f"Response validation failed: {str(e)}")
 
     return validated_response
+
+
+# --- REMINDERS API ENDPOINTS ---
+from app.reminder_store import load_reminders, add_reminder, update_reminder, delete_reminder
+
+class ReminderCreate(BaseModel):
+    title: str
+    time: str
+    type: str = "one-time"
+    day: str | None = None
+
+class ReminderUpdate(BaseModel):
+    status: str | None = None
+    title: str | None = None
+    time: str | None = None
+    type: str | None = None
+    day: str | None = None
+
+@app.get("/api/reminders")
+async def get_reminders_endpoint():
+    return load_reminders()
+
+@app.post("/api/reminders")
+async def create_reminder_endpoint(reminder: ReminderCreate):
+    return add_reminder(
+        title=reminder.title,
+        rtype=reminder.type,
+        time=reminder.time,
+        day=reminder.day
+    )
+
+@app.patch("/api/reminders/{reminder_id}")
+async def update_reminder_endpoint(reminder_id: str, reminder: ReminderUpdate):
+    updates = {k: v for k, v in reminder.model_dump().items() if v is not None}
+    res = update_reminder(reminder_id, updates)
+    if res is None:
+        raise HTTPException(status_code=404, detail="Reminder not found")
+    return res
+
+@app.delete("/api/reminders/{reminder_id}")
+async def delete_reminder_endpoint(reminder_id: str):
+    success = delete_reminder(reminder_id)
+    if not success:
+        raise HTTPException(status_code=404, detail="Reminder not found")
+    return {"status": "success", "message": "Reminder deleted successfully"}

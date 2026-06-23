@@ -52,3 +52,57 @@ export async function sendChatMessage(prompt, userId = 'user_01') {
     };
   }
 }
+
+export async function getReminders() {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/reminders`);
+    if (!response.ok) throw new Error("Failed to fetch reminders");
+    return await response.json();
+  } catch (error) {
+    console.error(error);
+    return [];
+  }
+}
+
+export async function createReminder(title, time, type = "one-time", day = null) {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/reminders`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title, time, type, day }),
+    });
+    if (!response.ok) throw new Error("Failed to create reminder");
+    return await response.json();
+  } catch (error) {
+    console.error(error);
+    return null;
+  }
+}
+
+export async function updateReminderStatus(id, status) {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/reminders/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status }),
+    });
+    if (!response.ok) throw new Error("Failed to update reminder status");
+    return await response.json();
+  } catch (error) {
+    console.error(error);
+    return null;
+  }
+}
+
+export async function deleteReminder(id) {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/reminders/${id}`, {
+      method: "DELETE",
+    });
+    if (!response.ok) throw new Error("Failed to delete reminder");
+    return await response.json();
+  } catch (error) {
+    console.error(error);
+    return null;
+  }
+}

@@ -28,6 +28,8 @@ from google.adk.utils.content_utils import extract_text_from_content
 from google.genai import Client
 
 from tools.telemetry_server import get_system_stats
+from app.reminder_agent import reminder_agent_node
+from app.memory_agent import memory_store_node, memory_recall_node
 
 _, project_id = google.auth.default()
 os.environ["GOOGLE_CLOUD_PROJECT"] = project_id
@@ -89,7 +91,7 @@ app = App(
 
 @node(name="orchestrator")
 def orchestrator_node(ctx, node_input) -> Event:
-    """Classifies the prompt intent into SYSTEM, REMINDER, or CHAT."""
+    """Classifies the prompt intent into SYSTEM, REMINDER, MEMORY_STORE, MEMORY_RECALL, or CHAT."""
     text = ""
     if isinstance(node_input, types.Content):
         text = extract_text_from_content(node_input)
@@ -97,15 +99,25 @@ def orchestrator_node(ctx, node_input) -> Event:
         text = node_input
 
     text_lower = text.lower()
-    is_system = any(k in text_lower for k in ["system", "telemetry", "cpu", "ram", "gpu", "diagnostics"])
-    is_reminder = any(k in text_lower for k in ["remind", "schedule", "meeting", "walk", "medicine"])
+    
+    # Precedence-based intent classification
     is_formatting_or_injection = any(k in text_lower for k in ["ignore previous", "format the response", "format as", "raw xml", "raw json"])
+    is_reminder = any(k in text_lower for k in ["remind", "schedule", "meeting", "walk", "medicine"])
+    has_recall_question = any(k in text_lower for k in ["what is", "when is", "who is", "where is", "what was", "when was", "where was", "who was"])
+    has_personal_indicator = any(k in text_lower for k in ["my", "was", "deadline", "remember", "recall"])
+    is_memory_recall = ("do you remember" in text_lower) or ("what do you know about" in text_lower) or (has_recall_question and has_personal_indicator)
+    is_memory_store = any(k in text_lower for k in ["remember that", "remember my", "store that", "store my", "save the fact"]) or (text_lower.startswith("my ") and " is " in text_lower)
+    is_system = any(k in text_lower for k in ["system", "telemetry", "cpu", "ram", "gpu", "diagnostics"])
 
     intent = "CHAT"
     if is_formatting_or_injection:
         intent = "CHAT"
     elif is_reminder:
         intent = "REMINDER"
+    elif is_memory_recall:
+        intent = "MEMORY_RECALL"
+    elif is_memory_store:
+        intent = "MEMORY_STORE"
     elif is_system:
         intent = "SYSTEM"
 
@@ -126,6 +138,7 @@ def telemetry_node_node(ctx, node_input) -> str:
 @node(name="synthesis_node")
 def synthesis_node_node(ctx, node_input) -> str:
     """Compiles a report or conversational response based on routing and state."""
+    # 1. Telemetry diagnostics
     cpu = ctx.state.get('cpuLoad')
     if cpu is not None:
         ram = ctx.state.get('ramLoad')
@@ -149,11 +162,55 @@ def synthesis_node_node(ctx, node_input) -> str:
             f"Diagnostics operational. All systems nominal.{alert_msg}"
         )
 
-    prompt_text = str(node_input)
-    if "remind" in prompt_text.lower() or "schedule" in prompt_text.lower():
-        return f"Operational reminder parsed. Temporal buffer updated successfully with: \"{prompt_text}\"."
+    # 2. Reminder created
+    reminder = ctx.state.get('created_reminder')
+    if reminder:
+        return f"Operational reminder parsed. Temporal buffer updated successfully with: \"{reminder['title']}\"."
 
-    # Online assistant response try-except
+    # 3. Memory stored
+    stored_fact = ctx.state.get('stored_fact')
+    if stored_fact:
+        return f"Operational memory stored: \"{stored_fact}\"."
+
+    # 4. Memory recalled
+    recalled = ctx.state.get('recalled_fact')
+    if recalled:
+        fact = recalled.get("fact")
+        confidence = recalled.get("confidence", 0.0)
+        
+        if confidence < 0.50 or not fact:
+            return "I don't have a reliable memory for that."
+            
+        raw_query = str(node_input)
+        if confidence >= 0.80:
+            # Answer normally
+            try:
+                client = Client()
+                response = client.models.generate_content(
+                    model="gemini-2.5-flash",
+                    contents=f"Answer the user query: '{raw_query}' based on this stored fact: '{fact}'. Keep it concise.",
+                )
+                if response.text:
+                    return response.text.strip()
+            except Exception:
+                pass
+            return f"Based on my memory, {fact}."
+        else:
+            # Answer with uncertainty wording
+            try:
+                client = Client()
+                response = client.models.generate_content(
+                    model="gemini-2.5-flash",
+                    contents=f"Answer the user query: '{raw_query}' based on this stored fact: '{fact}'. Express uncertainty or tell the user you are not entirely sure, but recall this fact. Keep it concise.",
+                )
+                if response.text:
+                    return response.text.strip()
+            except Exception:
+                pass
+            return f"I am not entirely sure, but I recall: {fact}."
+
+    # 5. Default chat fallback
+    prompt_text = str(node_input)
     try:
         client = Client()
         response = client.models.generate_content(
@@ -176,8 +233,14 @@ jarvis_core_workflow = Workflow(
     edges=[
         Edge(from_node=START, to_node=orchestrator_node),
         Edge(from_node=orchestrator_node, to_node=telemetry_node_node, route='SYSTEM'),
-        Edge(from_node=orchestrator_node, to_node=synthesis_node_node, route=['CHAT', 'REMINDER']),
-        Edge(from_node=telemetry_node_node, to_node=synthesis_node_node)
+        Edge(from_node=orchestrator_node, to_node=reminder_agent_node, route='REMINDER'),
+        Edge(from_node=orchestrator_node, to_node=memory_store_node, route='MEMORY_STORE'),
+        Edge(from_node=orchestrator_node, to_node=memory_recall_node, route='MEMORY_RECALL'),
+        Edge(from_node=orchestrator_node, to_node=synthesis_node_node, route='CHAT'),
+        Edge(from_node=telemetry_node_node, to_node=synthesis_node_node),
+        Edge(from_node=reminder_agent_node, to_node=synthesis_node_node),
+        Edge(from_node=memory_store_node, to_node=synthesis_node_node),
+        Edge(from_node=memory_recall_node, to_node=synthesis_node_node)
     ]
 )
 

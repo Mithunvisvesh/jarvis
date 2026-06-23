@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { sendChatMessage } from '../services/api';
+import { sendChatMessage, getReminders, createReminder, updateReminderStatus, deleteReminder } from '../services/api';
 
 const JarvisContext = createContext(undefined);
 
@@ -24,17 +24,33 @@ export function JarvisProvider({ children }) {
     syncActive: true
   });
 
-  const [reminders, setReminders] = useState([
-    { id: 'rem-1', text: 'Go for a morning walk', time: '5:00 AM', completed: false },
-    { id: 'rem-2', text: 'Take medicine.', time: '8:00 AM', completed: false },
-    { id: 'rem-3', text: 'Team meeting on Telegram', time: '10:00 AM', completed: false }
-  ]);
+  const [reminders, setReminders] = useState([]);
+
+  // Fetch all reminders from the backend
+  const fetchReminders = async () => {
+    try {
+      const data = await getReminders();
+      if (Array.isArray(data)) {
+        setReminders(data.map(item => ({
+          id: item.id,
+          text: item.title,
+          time: item.day ? `${item.time} (${item.day})` : item.time,
+          completed: item.status === 'completed'
+        })));
+      }
+    } catch (err) {
+      console.error("Failed to fetch reminders:", err);
+    }
+  };
+
+  useEffect(() => {
+    fetchReminders();
+  }, []);
 
   // Periodic Telemetry Simulator to make meters "dance" in the UI
   useEffect(() => {
     const timer = setInterval(() => {
       setTelemetry(prev => {
-        // Only fluctuate if we are active
         const change = (Math.random() - 0.5) * 4; // +/- 2%
         const cpu = Math.max(10, Math.min(95, Math.round(prev.cpuLoad + change)));
         const ram = Math.max(20, Math.min(90, Math.round(prev.ramLoad + (Math.random() - 0.5) * 1.5)));
@@ -48,7 +64,6 @@ export function JarvisProvider({ children }) {
         };
       });
       
-      // Slightly drift GPU load too unless actively processing
       if (!isThinking) {
         setGpuLoad(prev => {
           const drift = (Math.random() - 0.5) * 2;
@@ -61,21 +76,61 @@ export function JarvisProvider({ children }) {
   }, [isThinking]);
 
   // Handler to add a reminder
-  const addReminder = (text, time) => {
-    const newRem = {
-      id: `rem-${Date.now()}`,
-      text: text,
-      time: time || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      completed: false
-    };
-    setReminders(prev => [...prev, newRem]);
+  const addReminder = async (text, time) => {
+    let day = null;
+    let type = "one-time";
+    
+    const weeklyMatch = text.match(/every\s+(sunday|monday|tuesday|wednesday|thursday|friday|saturday)/i);
+    if (weeklyMatch) {
+      type = "weekly";
+      day = weeklyMatch[1].charAt(0).toUpperCase() + weeklyMatch[1].slice(1).toLowerCase();
+    } else if (text.toLowerCase().includes("daily") || text.toLowerCase().includes("every day")) {
+      type = "daily";
+    } else if (text.toLowerCase().includes("tomorrow")) {
+      day = "tomorrow";
+    }
+
+    // Clean title: strip "remind me to", etc.
+    let title = text;
+    const prefixMatch = text.match(/^(remind me to|remind me|add reminder to|add reminder for|schedule reminder for|schedule|please remind me to)\s+(.*)$/i);
+    if (prefixMatch) {
+      title = prefixMatch[2];
+    }
+    title = title.replace(/\s+(every|at|on|tomorrow|daily|weekly|schedule)\b.*$/i, "").trim();
+    if (title.toLowerCase().startsWith("to ")) {
+      title = title.slice(3);
+    } else if (title.toLowerCase().startsWith("for ")) {
+      title = title.slice(4);
+    }
+
+    await createReminder(title, time || "12:00 PM", type, day);
+    await fetchReminders();
   };
 
-  // Handler to toggle a reminder
-  const toggleReminder = (id) => {
-    setReminders(prev =>
-      prev.map(rem => (rem.id === id ? { ...rem, completed: !rem.completed } : rem))
-    );
+  // Handler to toggle a reminder completed status
+  const toggleReminder = async (id) => {
+    if (String(id).startsWith("rem-fallback-")) {
+      setReminders(prev =>
+        prev.map(rem => (rem.id === id ? { ...rem, completed: !rem.completed } : rem))
+      );
+      return;
+    }
+    
+    const target = reminders.find(r => r.id === id);
+    if (!target) return;
+    const newStatus = target.completed ? 'pending' : 'completed';
+    await updateReminderStatus(id, newStatus);
+    await fetchReminders();
+  };
+
+  // Handler to delete a reminder
+  const removeReminder = async (id) => {
+    if (String(id).startsWith("rem-fallback-")) {
+      setReminders(prev => prev.filter(rem => rem.id !== id));
+      return;
+    }
+    await deleteReminder(id);
+    await fetchReminders();
   };
 
   // Helper to extract a reminder command from user query (Simple Natural Language Parser)
@@ -102,7 +157,6 @@ export function JarvisProvider({ children }) {
     setMessages(prev => [...prev, userMsg]);
     setIsThinking(true);
     
-    // Check if the user is asking to schedule a reminder locally
     const localReminder = parseReminderInPrompt(text);
 
     // Call Backend API
@@ -111,7 +165,6 @@ export function JarvisProvider({ children }) {
     setIsConnected(response.success);
     setGpuLoad(response.data.gpu_load);
     
-    // Update telemetry from backend response if provided
     if (response.data.cpu_load !== null && response.success) {
       setTelemetry({
         cpuLoad: response.data.cpu_load,
@@ -120,6 +173,11 @@ export function JarvisProvider({ children }) {
         temperature: response.data.temperature,
         syncActive: response.data.sync_active
       });
+    }
+
+    // Refresh reminders list from backend
+    if (response.success) {
+      await fetchReminders();
     }
 
     const jarvisMsg = {
@@ -132,9 +190,15 @@ export function JarvisProvider({ children }) {
     setMessages(prev => [...prev, jarvisMsg]);
     setIsThinking(false);
 
-    // Trigger local reminder creation if parsed
-    if (localReminder) {
-      addReminder(localReminder.text, localReminder.time);
+    // Trigger local reminder creation only if backend call failed (offline override mode)
+    if (!response.success && localReminder) {
+      const newRem = {
+        id: `rem-fallback-${Date.now()}`,
+        text: localReminder.text,
+        time: localReminder.time,
+        completed: false
+      };
+      setReminders(prev => [...prev, newRem]);
     }
   };
 
@@ -160,6 +224,7 @@ export function JarvisProvider({ children }) {
       sendMessage,
       addReminder,
       toggleReminder,
+      removeReminder,
       clearChat
     }}>
       {children}
