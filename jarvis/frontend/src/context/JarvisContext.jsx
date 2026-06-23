@@ -1,5 +1,14 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { sendChatMessage, getReminders, createReminder, updateReminderStatus, deleteReminder } from '../services/api';
+import { 
+  sendChatMessage, 
+  getReminders, 
+  createReminder, 
+  updateReminderStatus, 
+  deleteReminder,
+  getMemories,
+  deleteMemory,
+  getDueReminders
+} from '../services/api';
 
 const JarvisContext = createContext(undefined);
 
@@ -13,6 +22,7 @@ export function JarvisProvider({ children }) {
     }
   ]);
   const [isThinking, setIsThinking] = useState(false);
+  const [executionState, setExecutionState] = useState('Idle');
   const [gpuLoad, setGpuLoad] = useState(10);
   const [isConnected, setIsConnected] = useState(true);
   
@@ -25,6 +35,29 @@ export function JarvisProvider({ children }) {
   });
 
   const [reminders, setReminders] = useState([]);
+  const [memories, setMemories] = useState([]);
+  const [dueReminders, setDueReminders] = useState([]);
+  const [timelineEvents, setTimelineEvents] = useState([
+    {
+      id: 'init-evt',
+      type: 'system',
+      message: 'JARVIS core initialized. Offline-first DB synchronization active.',
+      timestamp: new Date()
+    }
+  ]);
+
+  // Log a new timeline activity event
+  const addTimelineEvent = (type, message) => {
+    setTimelineEvents(prev => [
+      {
+        id: `evt-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+        type,
+        message,
+        timestamp: new Date()
+      },
+      ...prev
+    ]);
+  };
 
   // Fetch all reminders from the backend
   const fetchReminders = async () => {
@@ -43,8 +76,34 @@ export function JarvisProvider({ children }) {
     }
   };
 
+  // Fetch all memories from the backend
+  const fetchMemories = async () => {
+    try {
+      const data = await getMemories();
+      if (data && Array.isArray(data.facts)) {
+        setMemories(data.facts);
+      }
+    } catch (err) {
+      console.error("Failed to fetch memories:", err);
+    }
+  };
+
+  // Delete a memory from the backend
+  const removeMemory = async (id) => {
+    try {
+      const res = await deleteMemory(id);
+      if (res && res.status === 'success') {
+        addTimelineEvent('memory', `Memory block deleted successfully`);
+        await fetchMemories();
+      }
+    } catch (err) {
+      console.error("Failed to delete memory:", err);
+    }
+  };
+
   useEffect(() => {
     fetchReminders();
+    fetchMemories();
   }, []);
 
   // Periodic Telemetry Simulator to make meters "dance" in the UI
@@ -75,6 +134,35 @@ export function JarvisProvider({ children }) {
     return () => clearInterval(timer);
   }, [isThinking]);
 
+  // Periodic Polling for Due Reminders
+  useEffect(() => {
+    const checkDueReminders = async () => {
+      try {
+        const due = await getDueReminders();
+        if (Array.isArray(due) && due.length > 0) {
+          setDueReminders(prev => {
+            // Only add reminders that aren't already marked as due/notified
+            const newDue = due.filter(d => !prev.some(p => p.id === d.id));
+            if (newDue.length > 0) {
+              newDue.forEach(item => {
+                addTimelineEvent('reminder', `REMINDER DUE: "${item.title}"`);
+              });
+              return [...prev, ...newDue];
+            }
+            return prev;
+          });
+        }
+      } catch (err) {
+        console.error("Failed to poll due reminders:", err);
+      }
+    };
+    
+    // Check initially and then every 10 seconds
+    checkDueReminders();
+    const interval = setInterval(checkDueReminders, 10000);
+    return () => clearInterval(interval);
+  }, []);
+
   // Handler to add a reminder
   const addReminder = async (text, time) => {
     let day = null;
@@ -103,7 +191,10 @@ export function JarvisProvider({ children }) {
       title = title.slice(4);
     }
 
-    await createReminder(title, time || "12:00 PM", type, day);
+    const newReminder = await createReminder(title, time || "12:00 PM", type, day);
+    if (newReminder) {
+      addTimelineEvent('reminder', `Created reminder: "${title}" at ${time || '12:00 PM'}`);
+    }
     await fetchReminders();
   };
 
@@ -121,6 +212,7 @@ export function JarvisProvider({ children }) {
     const newStatus = target.completed ? 'pending' : 'completed';
     await updateReminderStatus(id, newStatus);
     await fetchReminders();
+    addTimelineEvent('reminder', `Updated reminder status: "${target.text}" -> ${newStatus}`);
   };
 
   // Handler to delete a reminder
@@ -131,6 +223,7 @@ export function JarvisProvider({ children }) {
     }
     await deleteReminder(id);
     await fetchReminders();
+    addTimelineEvent('reminder', `Deleted reminder from scheduled buffer`);
   };
 
   // Helper to extract a reminder command from user query (Simple Natural Language Parser)
@@ -156,28 +249,69 @@ export function JarvisProvider({ children }) {
 
     setMessages(prev => [...prev, userMsg]);
     setIsThinking(true);
+    addTimelineEvent('user', `Query submitted: "${text}"`);
     
+    // Simulate real-time progress steps during request flight
+    setExecutionState('Analyzing Request');
+    const t1 = setTimeout(() => setExecutionState('Routing Intent'), 400);
+    const t2 = setTimeout(() => setExecutionState('Running Tools'), 1000);
+    const t3 = setTimeout(() => setExecutionState('Synthesizing Response'), 1800);
+
     const localReminder = parseReminderInPrompt(text);
+    let response;
 
-    // Call Backend API
-    const response = await sendChatMessage(text);
-    
-    setIsConnected(response.success);
-    setGpuLoad(response.data.gpu_load);
-    
-    if (response.data.cpu_load !== null && response.success) {
-      setTelemetry({
-        cpuLoad: response.data.cpu_load,
-        ramLoad: response.data.ram_load,
-        diskLoad: response.data.disk_load,
-        temperature: response.data.temperature,
-        syncActive: response.data.sync_active
-      });
-    }
+    try {
+      // Call Backend API
+      response = await sendChatMessage(text);
+      
+      // Stop the simulation timers and complete immediately
+      clearTimeout(t1);
+      clearTimeout(t2);
+      clearTimeout(t3);
+      setExecutionState('Completed');
+      
+      setIsConnected(response.success);
+      setGpuLoad(response.data.gpu_load);
+      
+      if (response.data.cpu_load !== null && response.success) {
+        setTelemetry({
+          cpuLoad: response.data.cpu_load,
+          ramLoad: response.data.ram_load,
+          diskLoad: response.data.disk_load,
+          temperature: response.data.temperature,
+          syncActive: response.data.sync_active
+        });
+        
+        addTimelineEvent('diagnostics', `System metrics polled: CPU ${response.data.cpu_load}%, RAM ${response.data.ram_load}%`);
+      }
 
-    // Refresh reminders list from backend
-    if (response.success) {
-      await fetchReminders();
+      if (response.success && response.data.route) {
+        addTimelineEvent('system', `Routing intent resolved: [${response.data.route}]`);
+        if (response.data.route === 'MEMORY_STORE') {
+          addTimelineEvent('memory', 'Stored new fact in neural memory');
+        } else if (response.data.route === 'MEMORY_RECALL') {
+          addTimelineEvent('memory', 'Retrieved memory matching query semantic context');
+        } else if (response.data.route === 'REMINDER') {
+          addTimelineEvent('reminder', 'Parsed and saved scheduled reminder');
+        }
+      }
+
+      // Refresh data
+      if (response.success) {
+        await fetchReminders();
+        await fetchMemories();
+      }
+
+    } catch (err) {
+      console.error(err);
+      clearTimeout(t1);
+      clearTimeout(t2);
+      clearTimeout(t3);
+      setExecutionState('Completed');
+      response = {
+        success: false,
+        data: { message: `[CONNECTION ERROR] ${err.message}` }
+      };
     }
 
     const jarvisMsg = {
@@ -190,6 +324,9 @@ export function JarvisProvider({ children }) {
     setMessages(prev => [...prev, jarvisMsg]);
     setIsThinking(false);
 
+    // Reset execution state to Idle after 2 seconds
+    setTimeout(() => setExecutionState('Idle'), 2000);
+
     // Trigger local reminder creation only if backend call failed (offline override mode)
     if (!response.success && localReminder) {
       const newRem = {
@@ -199,6 +336,7 @@ export function JarvisProvider({ children }) {
         completed: false
       };
       setReminders(prev => [...prev, newRem]);
+      addTimelineEvent('reminder', `Local offline fallback reminder queued: "${localReminder.text}"`);
     }
   };
 
@@ -211,20 +349,28 @@ export function JarvisProvider({ children }) {
         timestamp: new Date()
       }
     ]);
+    addTimelineEvent('system', 'Terminal chat logs cleared.');
   };
 
   return (
     <JarvisContext.Provider value={{
       messages,
       isThinking,
+      executionState,
       gpuLoad,
       telemetry,
       reminders,
+      memories,
+      dueReminders,
+      timelineEvents,
       isConnected,
       sendMessage,
       addReminder,
       toggleReminder,
       removeReminder,
+      removeMemory,
+      setDueReminders,
+      addTimelineEvent,
       clearChat
     }}>
       {children}

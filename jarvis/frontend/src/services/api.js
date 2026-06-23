@@ -106,3 +106,42 @@ export async function deleteReminder(id) {
     return null;
   }
 }
+
+export async function getMemories() {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/memory`);
+    if (!response.ok) throw new Error("Failed to fetch memories");
+    return await response.json();
+  } catch (error) {
+    console.error(error);
+    return { facts: [] };
+  }
+}
+
+export async function deleteMemory(id) {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/memory/${id}`, {
+      method: "DELETE",
+    });
+    if (!response.ok) throw new Error("Failed to delete memory");
+    return await response.json();
+  } catch (error) {
+    console.error(error);
+    return null;
+  }
+}
+
+export async function getDueReminders(currentDt = null) {
+  try {
+    const url = currentDt 
+      ? `${API_BASE_URL}/api/reminders/due?current_dt=${encodeURIComponent(currentDt)}`
+      : `${API_BASE_URL}/api/reminders/due`;
+    const response = await fetch(url);
+    if (!response.ok) throw new Error("Failed to fetch due reminders");
+    return await response.json();
+  } catch (error) {
+    console.error(error);
+    return [];
+  }
+}
+

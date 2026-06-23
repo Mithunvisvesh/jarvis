@@ -207,3 +207,107 @@ async def delete_reminder_endpoint(reminder_id: str):
     if not success:
         raise HTTPException(status_code=404, detail="Reminder not found")
     return {"status": "success", "message": "Reminder deleted successfully"}
+
+
+# --- NEW PHASE 4 ENDPOINTS ---
+from datetime import datetime
+from fastapi.responses import HTMLResponse
+from fastapi import Response
+from app.memory_store import load_memory, delete_fact
+from app.reminder_store import get_due_reminders
+
+@app.get("/api/memory")
+async def get_memory_endpoint():
+    return load_memory()
+
+@app.delete("/api/memory/{fact_id}")
+async def delete_memory_endpoint(fact_id: str):
+    success = delete_fact(fact_id)
+    if not success:
+        raise HTTPException(status_code=404, detail="Memory fact not found")
+    return {"status": "success", "message": "Memory deleted successfully"}
+
+@app.get("/api/reminders/due")
+async def get_due_reminders_endpoint(current_dt: str | None = Query(None)):
+    dt = None
+    if current_dt:
+        try:
+            dt = datetime.fromisoformat(current_dt)
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid date format. Use ISO-8601 format.")
+    return get_due_reminders(dt)
+
+@app.get("/api/diagnostics/export")
+async def export_diagnostics_endpoint(format: str = Query("json")):
+    m_data = load_memory()
+    r_data = load_reminders()
+    
+    export_data = {
+        "timestamp": datetime.now().isoformat(),
+        "system_status": "ONLINE",
+        "database_stats": {
+            "total_memories": len(m_data.get("facts", [])),
+            "total_reminders": len(r_data)
+        },
+        "memories": m_data.get("facts", []),
+        "reminders": r_data
+    }
+    
+    if format.lower() == "json":
+        import json
+        content = json.dumps(export_data, indent=2, ensure_ascii=False)
+        return Response(
+            content=content,
+            media_type="application/json",
+            headers={"Content-Disposition": "attachment; filename=jarvis_diagnostics.json"}
+        )
+    elif format.lower() in ("pdf", "html"):
+        html_content = f"""
+        <html>
+        <head>
+            <title>JARVIS Diagnostics Export</title>
+            <style>
+                body {{ font-family: monospace; background-color: #050810; color: #00D4FF; padding: 20px; }}
+                h1, h2 {{ border-bottom: 1px solid #00D4FF; padding-bottom: 5px; }}
+                table {{ width: 100%; border-collapse: collapse; margin-top: 15px; }}
+                th, td {{ border: 1px solid #00D4FF; padding: 8px; text-align: left; }}
+                th {{ background-color: rgba(0, 212, 255, 0.1); }}
+                .meta {{ color: #FF0080; margin-bottom: 20px; }}
+            </style>
+        </head>
+        <body>
+            <h1>JARVIS CORE DIAGNOSTICS REPORT</h1>
+            <div class="meta">GENERATED AT: {export_data["timestamp"]} | SYSTEM: ACTIVE</div>
+            
+            <h2>DATABASE STATS</h2>
+            <table>
+                <tr><th>METRIC</th><th>VALUE</th></tr>
+                <tr><td>Total Memory Blocks</td><td>{export_data["database_stats"]["total_memories"]}</td></tr>
+                <tr><td>Total Scheduled Reminders</td><td>{export_data["database_stats"]["total_reminders"]}</td></tr>
+            </table>
+            
+            <h2>STORED MEMORIES</h2>
+            <table>
+                <tr><th>ID</th><th>FACT TEXT</th><th>CREATED AT</th></tr>
+        """
+        for fact in export_data["memories"]:
+            html_content += f"<tr><td>{fact['id']}</td><td>{fact['fact']}</td><td>{fact['created_at']}</td></tr>"
+        
+        html_content += """
+            </table>
+            <h2>SCHEDULED REMINDERS</h2>
+            <table>
+                <tr><th>ID</th><th>TITLE</th><th>TYPE</th><th>TIME</th><th>DAY</th><th>STATUS</th></tr>
+        """
+        for rem in export_data["reminders"]:
+            html_content += f"<tr><td>{rem.get('id')}</td><td>{rem.get('title')}</td><td>{rem.get('type')}</td><td>{rem.get('time')}</td><td>{rem.get('day') or 'N/A'}</td><td>{rem.get('status')}</td></tr>"
+            
+        html_content += """
+            </table>
+            <script>window.onload = function() { window.print(); }</script>
+        </body>
+        </html>
+        """
+        return HTMLResponse(content=html_content)
+    else:
+        raise HTTPException(status_code=400, detail="Unsupported format. Choose 'json' or 'pdf'/'html'.")
