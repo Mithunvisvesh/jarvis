@@ -1,6 +1,6 @@
-from fastapi import FastAPI, Query
+from fastapi import FastAPI, Query, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 import random
 import logging
 import os
@@ -36,7 +36,23 @@ class JarvisRequest(BaseModel):
     user_id: str = "default_user"
     session_id: str = "default_session"
 
-@app.post("/api/chat")
+class JarvisResponse(BaseModel):
+    status: str
+    message: str
+    cpuLoad: int
+    ramLoad: int
+    diskLoad: int
+    gpuLoad: int
+    route: str
+    temperature: int | None = None
+    sync_active: bool = True
+    # For backward compatibility
+    cpu_load: int | None = None
+    ram_load: int | None = None
+    disk_load: int | None = None
+    gpu_load: int | None = None
+
+@app.post("/api/chat", response_model=JarvisResponse)
 async def chat_endpoint(request: JarvisRequest, use_workflow: bool = Query(True)):
     # Platform-wide toggle: default to true now that workflow is verified
     run_workflow_path = (os.environ.get("USE_WORKFLOW", "true").lower() == "true") or use_workflow
@@ -61,9 +77,9 @@ async def chat_endpoint(request: JarvisRequest, use_workflow: bool = Query(True)
         )
 
     agent_response = ""
+    events = []
     try:
         content = types.Content(role="user", parts=[types.Part.from_text(text=request.prompt)])
-        events = []
         
         # Run agent query asynchronously using public Runner API
         async for event in runner_to_run.run_async(
@@ -112,13 +128,23 @@ async def chat_endpoint(request: JarvisRequest, use_workflow: bool = Query(True)
     gpu_load = state.get("gpuLoad", 10)
     temperature = random.randint(40, 65)
 
-    return {
+    # Extract classified route from runner events
+    classified_route = "CHAT"
+    if run_workflow_path:
+        for event in events:
+            if getattr(event, "actions", None) and getattr(event.actions, "route", None):
+                classified_route = event.actions.route
+                break
+
+    # Build response dictionary
+    response_dict = {
         "status": "success",
         "message": agent_response,
         "gpuLoad": gpu_load,
         "cpuLoad": cpu_load,
         "ramLoad": ram_load,
         "diskLoad": disk_load,
+        "route": classified_route,
         "temperature": temperature,
         "sync_active": True,
         # Backward compatibility support
@@ -127,3 +153,12 @@ async def chat_endpoint(request: JarvisRequest, use_workflow: bool = Query(True)
         "ram_load": ram_load,
         "disk_load": disk_load,
     }
+
+    # Strict schema validation: raise HTTPException with status_code 422 if invalid
+    try:
+        validated_response = JarvisResponse(**response_dict)
+    except ValidationError as e:
+        logger.error(f"Response validation failed: {e}")
+        raise HTTPException(status_code=422, detail=f"Response validation failed: {str(e)}")
+
+    return validated_response

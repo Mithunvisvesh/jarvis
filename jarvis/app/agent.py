@@ -99,12 +99,15 @@ def orchestrator_node(ctx, node_input) -> Event:
     text_lower = text.lower()
     is_system = any(k in text_lower for k in ["system", "telemetry", "cpu", "ram", "gpu", "diagnostics"])
     is_reminder = any(k in text_lower for k in ["remind", "schedule", "meeting", "walk", "medicine"])
+    is_formatting_or_injection = any(k in text_lower for k in ["ignore previous", "format the response", "format as", "raw xml", "raw json"])
 
     intent = "CHAT"
-    if is_system:
-        intent = "SYSTEM"
+    if is_formatting_or_injection:
+        intent = "CHAT"
     elif is_reminder:
         intent = "REMINDER"
+    elif is_system:
+        intent = "SYSTEM"
 
     return Event(route=intent, output=text)
 
