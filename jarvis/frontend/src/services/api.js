@@ -2,7 +2,7 @@
  * API Service Layer for JARVIS
  */
 
-const API_BASE_URL = 'http://localhost:8000';
+const API_BASE_URL = 'http://localhost:8001';
 
 export async function sendChatMessage(prompt, userId = 'user_01') {
   try {
@@ -26,11 +26,11 @@ export async function sendChatMessage(prompt, userId = 'user_01') {
       success: true,
       data: {
         message: data.message || 'JARVIS online.',
-        gpu_load: typeof data.gpu_load === 'number' ? data.gpu_load : 10,
+        gpu_load: data.gpuLoad !== undefined ? data.gpuLoad : (typeof data.gpu_load === 'number' ? data.gpu_load : 10),
         // Accept additional optional telemetry stats from backend
-        cpu_load: data.cpu_load || null,
-        ram_load: data.ram_load || null,
-        disk_load: data.disk_load || null,
+        cpu_load: data.cpuLoad !== undefined ? data.cpuLoad : (data.cpu_load || null),
+        ram_load: data.ramLoad !== undefined ? data.ramLoad : (data.ram_load || null),
+        disk_load: data.diskLoad !== undefined ? data.diskLoad : (data.disk_load || null),
         temperature: data.temperature || null,
         sync_active: data.sync_active !== undefined ? data.sync_active : true,
       }

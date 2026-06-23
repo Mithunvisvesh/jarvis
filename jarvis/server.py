@@ -1,19 +1,23 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import random
 import logging
+import os
 
-# Import ADK modules
-from app.agent_runtime_app import agent_runtime
+from google.adk.runners import Runner
+from google.adk.sessions import InMemorySessionService
 from google.adk.events.event import Event
+from google.genai import types
+
+# Import both the legacy production app and the new Phase 2 workflow app
+from app.agent import app as adk_app, workflow_app
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 app = FastAPI(title="JARVIS IPC Bridge")
 
-# Support both port 3000 and Vite default port 5173
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -22,68 +26,104 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Startup event to ensure agent is fully configured
-@app.on_event("startup")
-def startup_event():
-    try:
-        agent_runtime.set_up()
-        logger.info("ADK Agent Runtime successfully initialized.")
-    except Exception as e:
-        logger.error(f"Failed to initialize ADK Agent Runtime: {e}")
+# Instantiate public session service and runners
+session_service = InMemorySessionService()
+production_runner = Runner(app=adk_app, session_service=session_service)
+workflow_runner = Runner(app=workflow_app, session_service=session_service)
 
 class JarvisRequest(BaseModel):
     prompt: str
     user_id: str = "default_user"
+    session_id: str = "default_session"
 
 @app.post("/api/chat")
-async def chat_endpoint(request: JarvisRequest):
-    logger.info(f"Received prompt: {request.prompt}")
+async def chat_endpoint(request: JarvisRequest, use_workflow: bool = Query(True)):
+    # Platform-wide toggle: default to true now that workflow is verified
+    run_workflow_path = (os.environ.get("USE_WORKFLOW", "true").lower() == "true") or use_workflow
     
+    logger.info(f"Received prompt: '{request.prompt}' (Workflow path: {run_workflow_path})")
+    
+    # Configure session
+    app_to_run = workflow_app if run_workflow_path else adk_app
+    runner_to_run = workflow_runner if run_workflow_path else production_runner
+    
+    # Ensure session exists or create it
+    session = await session_service.get_session(
+        session_id=request.session_id,
+        app_name=app_to_run.name,
+        user_id=request.user_id
+    )
+    if session is None:
+        session = await session_service.create_session(
+            user_id=request.user_id,
+            app_name=app_to_run.name,
+            session_id=request.session_id
+        )
+
     agent_response = ""
     try:
+        content = types.Content(role="user", parts=[types.Part.from_text(text=request.prompt)])
         events = []
-        # Attempt to run query asynchronously against the ReAct agent
-        async for event in agent_runtime.async_stream_query(
-            message=request.prompt, 
-            user_id=request.user_id
+        
+        # Run agent query asynchronously using public Runner API
+        async for event in runner_to_run.run_async(
+            user_id=request.user_id,
+            session_id=session.id,
+            new_message=content
         ):
             events.append(event)
-        
-        # Extract text components from the events
+            
+        # Parse text responses from event stream
         for event in events:
-            validated_event = Event.model_validate(event)
-            content = validated_event.content
-            if content and content.parts:
-                for part in content.parts:
+            if event.output and isinstance(event.output, str):
+                agent_response = event.output
+            elif event.content and event.content.parts:
+                for part in event.content.parts:
                     if part.text:
                         agent_response += part.text
-                        
+                    
         if not agent_response:
             agent_response = "Prompt processed but no textual answer was returned."
             
     except Exception as e:
-        logger.error(f"Error executing agent query: {e}")
-        # Graceful fallback if Vertex AI credentials or network is offline
+        logger.error(f"Error running runner query: {e}")
+        # Offline fallback behavior remains intact
         agent_response = (
             f"[STANDALONE OVERRIDE] I received your prompt: \"{request.prompt}\".\n"
             f"The backend is offline/unauthenticated (Reason: {str(e)}). "
             f"System remains operational in override mode."
         )
 
-    # Calculate telemetry metrics for the frontend indicators
-    gpu_load = random.randint(15, 80) if request.prompt else 10
-    cpu_load = random.randint(20, 70)
-    ram_load = random.randint(45, 85)
-    disk_load = 42
+    # 4. Telemetry retrieval from session state
+    try:
+        updated_session = await session_service.get_session(
+            session_id=session.id,
+            app_name=app_to_run.name,
+            user_id=request.user_id
+        )
+        state = updated_session.state or {} if updated_session else {}
+    except Exception:
+        state = {}
+
+    # Extract metrics from state if telemetry_node was run, otherwise use defaults
+    cpu_load = state.get("cpuLoad", random.randint(20, 70))
+    ram_load = state.get("ramLoad", random.randint(45, 85))
+    disk_load = state.get("diskLoad", 42)
+    gpu_load = state.get("gpuLoad", 10)
     temperature = random.randint(40, 65)
 
     return {
         "status": "success",
         "message": agent_response,
+        "gpuLoad": gpu_load,
+        "cpuLoad": cpu_load,
+        "ramLoad": ram_load,
+        "diskLoad": disk_load,
+        "temperature": temperature,
+        "sync_active": True,
+        # Backward compatibility support
         "gpu_load": gpu_load,
         "cpu_load": cpu_load,
         "ram_load": ram_load,
         "disk_load": disk_load,
-        "temperature": temperature,
-        "sync_active": True
     }
