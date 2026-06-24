@@ -8,9 +8,12 @@ import MemoryViewer from './components/MemoryViewer';
 import ActivityTimeline from './components/ActivityTimeline';
 import TraceViewer from './components/TraceViewer';
 import StatusBar from './components/StatusBar';
+import AgendaView from './components/AgendaView';
+import KnowledgeView from './components/KnowledgeView';
 
 function Dashboard() {
   const [activeRightTab, setActiveRightTab] = useState('system'); // 'system' | 'memory' | 'logs'
+  const [currentView, setCurrentView] = useState('chat'); // 'chat' | 'agenda' | 'knowledge'
   const { isDeveloperMode } = useJarvis();
 
   return (
@@ -23,9 +26,9 @@ function Dashboard() {
         gridTemplateColumns: isDeveloperMode ? '64px 1fr 280px' : '64px 1fr',
         backgroundColor: 'var(--bg-primary)'
       }}>
-        <Sidebar />
+        <Sidebar currentView={currentView} setCurrentView={setCurrentView} />
         
-        {/* Centered Conversation Area */}
+        {/* Centered Workspace Area */}
         <div style={{
           display: 'flex',
           justifyContent: 'center',
@@ -48,7 +51,9 @@ function Dashboard() {
             borderRadius: '8px',
             overflow: 'hidden'
           }}>
-            <ChatInterface />
+            {currentView === 'chat' && <ChatInterface />}
+            {currentView === 'agenda' && <AgendaView />}
+            {currentView === 'knowledge' && <KnowledgeView />}
           </div>
         </div>
 

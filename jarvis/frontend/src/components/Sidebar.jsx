@@ -1,22 +1,19 @@
-import React, { useState } from 'react';
+import React from 'react';
+import { useJarvis } from '../context/JarvisContext';
 import { 
-  Terminal, 
   MessageSquare, 
-  Settings, 
-  Activity, 
-  ShieldAlert,
-  FolderOpen
+  Calendar, 
+  Brain, 
+  Code
 } from 'lucide-react';
 
-export default function Sidebar() {
-  const [activeTab, setActiveTab] = useState('chat');
+export default function Sidebar({ currentView, setCurrentView }) {
+  const { isDeveloperMode, setIsDeveloperMode } = useJarvis();
 
   const menuItems = [
-    { id: 'chat', icon: MessageSquare, label: 'CORE OVERLAY' },
-    { id: 'terminal', icon: Terminal, label: 'SYS_SHELL' },
-    { id: 'diagnostics', icon: Activity, label: 'TELEMETRY' },
-    { id: 'security', icon: ShieldAlert, label: 'TDD_GATE' },
-    { id: 'files', icon: FolderOpen, label: 'RESOURCES' },
+    { id: 'chat', icon: MessageSquare, label: 'CHAT OVERLAY' },
+    { id: 'agenda', icon: Calendar, label: 'AGENDA' },
+    { id: 'knowledge', icon: Brain, label: 'KNOWLEDGE BASE' },
   ];
 
   return (
@@ -45,7 +42,7 @@ export default function Sidebar() {
         cursor: 'pointer',
         boxShadow: 'var(--glow-cyan)',
         position: 'relative'
-      }}>
+      }} onClick={() => setCurrentView('chat')}>
         <div style={{
           width: '16px',
           height: '16px',
@@ -64,12 +61,12 @@ export default function Sidebar() {
       }}>
         {menuItems.map((item) => {
           const Icon = item.icon;
-          const isActive = activeTab === item.id;
+          const isActive = currentView === item.id;
           
           return (
             <div 
               key={item.id}
-              onClick={() => setActiveTab(item.id)}
+              onClick={() => setCurrentView(item.id)}
               title={item.label}
               style={{
                 width: '40px',
@@ -118,10 +115,10 @@ export default function Sidebar() {
         })}
       </div>
 
-      {/* Settings */}
+      {/* Developer Mode Toggle */}
       <div 
-        onClick={() => setActiveTab('settings')}
-        title="SETTINGS"
+        onClick={() => setIsDeveloperMode(!isDeveloperMode)}
+        title={isDeveloperMode ? "DISABLE DEV MODE" : "ENABLE DEV MODE"}
         style={{
           width: '40px',
           height: '40px',
@@ -131,22 +128,23 @@ export default function Sidebar() {
           justifyContent: 'center',
           cursor: 'pointer',
           transition: 'all 0.3s ease',
-          color: activeTab === 'settings' ? 'var(--accent-cyan)' : 'var(--text-secondary)',
-          backgroundColor: activeTab === 'settings' ? 'rgba(0, 212, 255, 0.08)' : 'transparent',
-          border: activeTab === 'settings' ? '1px solid rgba(0, 212, 255, 0.3)' : '1px solid transparent',
+          color: isDeveloperMode ? 'var(--accent-cyan)' : 'var(--text-secondary)',
+          backgroundColor: isDeveloperMode ? 'rgba(0, 212, 255, 0.08)' : 'transparent',
+          border: isDeveloperMode ? '1px solid rgba(0, 212, 255, 0.3)' : '1px solid transparent',
+          boxShadow: isDeveloperMode ? '0 0 10px rgba(0, 212, 255, 0.1)' : 'none'
         }}
         onMouseEnter={(e) => {
-          if (activeTab !== 'settings') {
+          if (!isDeveloperMode) {
             e.currentTarget.style.color = 'var(--accent-cyan)';
           }
         }}
         onMouseLeave={(e) => {
-          if (activeTab !== 'settings') {
+          if (!isDeveloperMode) {
             e.currentTarget.style.color = 'var(--text-secondary)';
           }
         }}
       >
-        <Settings size={20} />
+        <Code size={20} />
       </div>
     </div>
   );

@@ -171,3 +171,27 @@ We stripped away verbose texts, status logs, and redundant labels to create a mi
   - **Routing/Synthesizing States**: Pulsing pink dot (`--accent-pink` / `#FF0080` pulsing with keyframe `pulse-pink`).
   - **Offline Fallback**: Muted hot-pink dot (`--accent-pink`) when `isConnected` is false.
 - **Interactive Tooltip**: Added cursor help and native tooltips showing the current execution state on hover.
+
+---
+
+## 🛠️ Day 4: Functional Sidebar & Purposeful Navigation
+
+### 1. Task 4.1 — Purge Unused Navigation Elements
+We eliminated dead UI navigation elements from the sidebar to establish a professional, production-ready interface:
+- **Cleaned Navigation List**: Audited `Sidebar.jsx` and removed all mock placeholder icons/menus including `SYS_SHELL` (Terminal), `TELEMETRY` (Diagnostics), `TDD_GATE` (Security), and `RESOURCES` (Files).
+- **Remaining Items**: Retained only working screens:
+  - **Chat** (MessageSquare icon, title: `"CHAT OVERLAY"`)
+  - **Agenda** (Calendar icon, title: `"AGENDA"`)
+  - **Knowledge** (Brain icon, title: `"KNOWLEDGE BASE"`)
+- **Integrated Sidebar Developer Toggle**: Moved the Developer Mode toggle button (`Code` icon, title: `"ENABLE DEV MODE" / "DISABLE DEV MODE"`) from the header to the bottom of the left sidebar. It highlights in `--accent-cyan` and glows when active, toggling the visibility of developer panels.
+
+### 2. Task 4.2 — View Router for Agenda and Knowledge Base
+We wired a state-driven view manager to display dedicated, full-screen operational workspaces in the central column:
+- **Router State Manager**: Declared `currentView` (`'chat' | 'agenda' | 'knowledge'`) inside `App.jsx` and wired callbacks to `Sidebar.jsx` to swap screens.
+- **Dedicated Agenda View** ([AgendaView.jsx](file:///d:/mithun_files/Personal/5-Day%20AI%20Agents%20Intensive%20Vibe%20Coding%20Course%20With%20Google/Capstone%20Project/jarvis/frontend/src/components/AgendaView.jsx)):
+  - Built a dedicated full-page panel displaying scheduled tasks and active reminders in a spacious layout.
+  - Retained the ability to toggle tasks as completed, delete tasks, and queue new tasks with a clean slide-out form.
+- **Dedicated Knowledge View** ([KnowledgeView.jsx](file:///d:/mithun_files/Personal/5-Day%20AI%20Agents%20Intensive%20Vibe%20Coding%20Course%20With%20Google/Capstone%20Project/jarvis/frontend/src/components/KnowledgeView.jsx)):
+  - Built a dedicated full-page panel rendering episodic memory facts.
+  - Integrated the character-level LCS query scorer showing confidence match percentages when searching the memory banks.
+- **Diagnostics Retained**: Toggling Developer Mode continues to open the right-sidebar (containing Telemetry Panel, Trace Timeline, Event Logger, and Agenda list) in any active view.
