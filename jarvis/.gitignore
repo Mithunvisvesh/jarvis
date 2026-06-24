@@ -206,3 +206,5 @@ tools/a2a-inspector/
 # JARVIS Local Databases
 data/
 data/*.json
+logs/
+logs/*.json

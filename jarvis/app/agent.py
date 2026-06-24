@@ -103,10 +103,10 @@ def orchestrator_node(ctx, node_input) -> Event:
     # Precedence-based intent classification
     is_formatting_or_injection = any(k in text_lower for k in ["ignore previous", "format the response", "format as", "raw xml", "raw json"])
     is_reminder = any(k in text_lower for k in ["remind", "schedule", "meeting", "walk", "medicine"])
-    has_recall_question = any(k in text_lower for k in ["what is", "when is", "who is", "where is", "what was", "when was", "where was", "who was"])
-    has_personal_indicator = any(k in text_lower for k in ["my", "was", "deadline", "remember", "recall"])
+    has_recall_question = any(k in text_lower for k in ["what is", "when is", "who is", "where is", "what was", "when was", "where was", "who was", "who did", "where did", "what did", "when did"])
+    has_personal_indicator = any(k in text_lower for k in ["my", "was", "deadline", "remember", "recall", " i "])
     is_memory_recall = ("do you remember" in text_lower) or ("what do you know about" in text_lower) or (has_recall_question and has_personal_indicator)
-    is_memory_store = any(k in text_lower for k in ["remember that", "remember my", "store that", "store my", "save the fact"]) or (text_lower.startswith("my ") and " is " in text_lower)
+    is_memory_store = any(k in text_lower for k in ["remember that", "remember my", "store that", "store my", "save the fact", "remember"]) or (text_lower.startswith("my ") and " is " in text_lower)
     is_system = any(k in text_lower for k in ["system", "telemetry", "cpu", "ram", "gpu", "diagnostics"])
 
     intent = "CHAT"

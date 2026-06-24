@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useJarvis } from '../context/JarvisContext';
 import { Send, Eye, ShieldAlert, Cpu, Trash2, Bell } from 'lucide-react';
+import DemoPanel from './DemoPanel';
 
 export default function ChatInterface() {
   const { 
@@ -172,6 +173,8 @@ export default function ChatInterface() {
         </div>
       </div>
 
+      <DemoPanel />
+
       {/* Due Reminder Alert Banner Area */}
       {dueReminders.length > 0 && (
         <div className="cyber-panel" style={{
@@ -330,7 +333,7 @@ export default function ChatInterface() {
             }}>
               🤖 JARVIS // ENGINE_PIPELINE
             </span>
-            <div className="cyber-panel thinking-pulse" style={{
+            <div className={`cyber-panel ${executionState === 'Running Tools' || executionState === 'Synthesizing Response' ? 'pink-pulse' : 'thinking-pulse'}`} style={{
               padding: '16px',
               borderRadius: '4px',
               width: '100%',

@@ -145,3 +145,25 @@ export async function getDueReminders(currentDt = null) {
   }
 }
 
+export async function getTraces() {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/traces`);
+    if (!response.ok) throw new Error("Failed to fetch traces");
+    return await response.json();
+  } catch (error) {
+    console.error(error);
+    return [];
+  }
+}
+
+export async function getTraceDetail(workflowId) {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/traces/${workflowId}`);
+    if (!response.ok) throw new Error("Failed to fetch trace detail");
+    return await response.json();
+  } catch (error) {
+    console.error(error);
+    return null;
+  }
+}
+

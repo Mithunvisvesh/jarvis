@@ -6,6 +6,7 @@ import TelemetryPanel from './components/TelemetryPanel';
 import TemporalBuffer from './components/TemporalBuffer';
 import MemoryViewer from './components/MemoryViewer';
 import ActivityTimeline from './components/ActivityTimeline';
+import TraceViewer from './components/TraceViewer';
 import StatusBar from './components/StatusBar';
 
 function Dashboard() {
@@ -42,7 +43,7 @@ function Dashboard() {
             gap: '4px',
             flexShrink: 0
           }}>
-            {['system', 'memory', 'logs'].map(tab => (
+            {['system', 'memory', 'logs', 'traces'].map(tab => (
               <button
                 key={tab}
                 onClick={() => setActiveRightTab(tab)}
@@ -83,6 +84,7 @@ function Dashboard() {
             )}
             {activeRightTab === 'memory' && <MemoryViewer />}
             {activeRightTab === 'logs' && <ActivityTimeline />}
+            {activeRightTab === 'traces' && <TraceViewer />}
           </div>
         </div>
       </div>

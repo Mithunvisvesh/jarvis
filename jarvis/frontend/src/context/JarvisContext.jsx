@@ -250,85 +250,215 @@ export function JarvisProvider({ children }) {
     setMessages(prev => [...prev, userMsg]);
     setIsThinking(true);
     addTimelineEvent('user', `Query submitted: "${text}"`);
-    
-    // Simulate real-time progress steps during request flight
     setExecutionState('Analyzing Request');
-    const t1 = setTimeout(() => setExecutionState('Routing Intent'), 400);
-    const t2 = setTimeout(() => setExecutionState('Running Tools'), 1000);
-    const t3 = setTimeout(() => setExecutionState('Synthesizing Response'), 1800);
 
     const localReminder = parseReminderInPrompt(text);
-    let response;
+    let sseSuccess = false;
+    let finalPayload = null;
 
     try {
-      // Call Backend API
-      response = await sendChatMessage(text);
-      
-      // Stop the simulation timers and complete immediately
-      clearTimeout(t1);
-      clearTimeout(t2);
-      clearTimeout(t3);
-      setExecutionState('Completed');
-      
-      setIsConnected(response.success);
-      setGpuLoad(response.data.gpu_load);
-      
-      if (response.data.cpu_load !== null && response.success) {
-        setTelemetry({
-          cpuLoad: response.data.cpu_load,
-          ramLoad: response.data.ram_load,
-          diskLoad: response.data.disk_load,
-          temperature: response.data.temperature,
-          syncActive: response.data.sync_active
-        });
-        
-        addTimelineEvent('diagnostics', `System metrics polled: CPU ${response.data.cpu_load}%, RAM ${response.data.ram_load}%`);
-      }
+      // 1. Try SSE Stream Endpoint
+      const response = await fetch('http://localhost:8001/api/chat/stream', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          prompt: text,
+          user_id: 'user_01',
+          session_id: 'default_session'
+        }),
+      });
 
-      if (response.success && response.data.route) {
-        addTimelineEvent('system', `Routing intent resolved: [${response.data.route}]`);
-        if (response.data.route === 'MEMORY_STORE') {
-          addTimelineEvent('memory', 'Stored new fact in neural memory');
-        } else if (response.data.route === 'MEMORY_RECALL') {
-          addTimelineEvent('memory', 'Retrieved memory matching query semantic context');
-        } else if (response.data.route === 'REMINDER') {
-          addTimelineEvent('reminder', 'Parsed and saved scheduled reminder');
+      if (response.ok && response.body) {
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder('utf-8');
+        let buffer = '';
+        sseSuccess = true;
+
+        while (true) {
+          const { value, done } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop(); // keep last incomplete line
+
+          for (const line of lines) {
+            if (line.startsWith('data: ')) {
+              const dataStr = line.slice(6).trim();
+              if (dataStr) {
+                try {
+                  const event = JSON.parse(dataStr);
+                  
+                  // Map event type to executionState
+                  switch (event.event_type) {
+                    case 'THINKING':
+                    case 'INTENT_DETECTED':
+                      setExecutionState('Analyzing Request');
+                      break;
+                    case 'ROUTING':
+                      setExecutionState('Routing Intent');
+                      if (event.payload && event.payload.data && event.payload.data.route) {
+                        addTimelineEvent('system', `Routing intent resolved: [${event.payload.data.route}]`);
+                      }
+                      break;
+                    case 'TOOL_START':
+                      setExecutionState('Running Tools');
+                      if (event.payload && event.payload.data && event.payload.data.tool) {
+                        addTimelineEvent('system', `Invoking tool: ${event.payload.data.tool}`);
+                      }
+                      break;
+                    case 'TOOL_COMPLETE':
+                      addTimelineEvent('diagnostics', `Tool execution complete.`);
+                      break;
+                    case 'MEMORY_STORE':
+                      setExecutionState('Running Tools');
+                      addTimelineEvent('memory', 'Initiating memory storage transaction...');
+                      break;
+                    case 'MEMORY_STORED':
+                      addTimelineEvent('memory', 'Stored new fact in neural memory');
+                      break;
+                    case 'MEMORY_RECALL':
+                      setExecutionState('Running Tools');
+                      addTimelineEvent('memory', 'Searching semantic memory...');
+                      break;
+                    case 'MEMORY_RECALLED':
+                      addTimelineEvent('memory', 'Retrieved memory matching query semantic context');
+                      break;
+                    case 'REMINDER_CREATE':
+                      setExecutionState('Running Tools');
+                      addTimelineEvent('reminder', 'Scheduling temporal reminder...');
+                      break;
+                    case 'REMINDER_CREATED':
+                      addTimelineEvent('reminder', 'Parsed and saved scheduled reminder');
+                      break;
+                    case 'RESPONSE_SYNTHESIS':
+                      setExecutionState('Synthesizing Response');
+                      break;
+                    case 'COMPLETE':
+                      setExecutionState('Completed');
+                      if (event.payload && event.payload.data) {
+                        finalPayload = event.payload.data;
+                      }
+                      break;
+                    default:
+                      break;
+                  }
+                } catch (e) {
+                  console.error("Failed to parse SSE line JSON:", e);
+                }
+              }
+            }
+          }
         }
       }
-
-      // Refresh data
-      if (response.success) {
-        await fetchReminders();
-        await fetchMemories();
-      }
-
-    } catch (err) {
-      console.error(err);
-      clearTimeout(t1);
-      clearTimeout(t2);
-      clearTimeout(t3);
-      setExecutionState('Completed');
-      response = {
-        success: false,
-        data: { message: `[CONNECTION ERROR] ${err.message}` }
-      };
+    } catch (sseErr) {
+      console.warn("SSE stream connection failed or not supported. Falling back to HTTP POST /api/chat. Error:", sseErr);
+      sseSuccess = false;
     }
 
-    const jarvisMsg = {
-      id: `msg-${Date.now() + 1}`,
-      sender: 'jarvis',
-      text: response.data.message,
-      timestamp: new Date()
-    };
+    // 2. Fallback to standard HTTP POST if SSE failed or didn't yield a payload
+    if (!sseSuccess || !finalPayload) {
+      // Simulate progress steps since we are in sync fallback mode
+      setExecutionState('Analyzing Request');
+      const t1 = setTimeout(() => setExecutionState('Routing Intent'), 400);
+      const t2 = setTimeout(() => setExecutionState('Running Tools'), 1000);
+      const t3 = setTimeout(() => setExecutionState('Synthesizing Response'), 1800);
 
-    setMessages(prev => [...prev, jarvisMsg]);
-    setIsThinking(false);
+      try {
+        const response = await sendChatMessage(text);
+        
+        clearTimeout(t1);
+        clearTimeout(t2);
+        clearTimeout(t3);
+        setExecutionState('Completed');
+
+        setIsConnected(response.success);
+        if (response.success) {
+          finalPayload = response.data;
+          
+          if (finalPayload.cpu_load !== null) {
+            addTimelineEvent('diagnostics', `System metrics polled: CPU ${finalPayload.cpu_load}%, RAM ${finalPayload.ram_load}%`);
+          }
+          if (finalPayload.route) {
+            addTimelineEvent('system', `Routing intent resolved: [${finalPayload.route}]`);
+            if (finalPayload.route === 'MEMORY_STORE') {
+              addTimelineEvent('memory', 'Stored new fact in neural memory');
+            } else if (finalPayload.route === 'MEMORY_RECALL') {
+              addTimelineEvent('memory', 'Retrieved memory matching query semantic context');
+            } else if (finalPayload.route === 'REMINDER') {
+              addTimelineEvent('reminder', 'Parsed and saved scheduled reminder');
+            }
+          }
+        } else {
+          finalPayload = {
+            message: response.data.message || 'Operation failed.',
+            gpu_load: 5,
+            cpu_load: 0,
+            ram_load: 0,
+            disk_load: 0,
+            temperature: 0,
+            sync_active: false,
+            route: 'CHAT'
+          };
+        }
+      } catch (postErr) {
+        console.error("Fallback POST chat endpoint also failed:", postErr);
+        clearTimeout(t1);
+        clearTimeout(t2);
+        clearTimeout(t3);
+        setExecutionState('Completed');
+        
+        finalPayload = {
+          message: `[CONNECTION ERROR] Both streaming and fallback endpoints failed: ${postErr.message}`,
+          gpu_load: 5,
+          cpu_load: 0,
+          ram_load: 0,
+          disk_load: 0,
+          temperature: 0,
+          sync_active: false,
+          route: 'CHAT'
+        };
+      }
+    }
+
+    // 3. Process the final response payload (from either SSE or Fallback POST)
+    if (finalPayload) {
+      setIsConnected(finalPayload.sync_active !== undefined ? finalPayload.sync_active : true);
+      setGpuLoad(finalPayload.gpu_load !== undefined ? finalPayload.gpu_load : (finalPayload.gpuLoad || 10));
+      
+      const cpu = finalPayload.cpu_load !== undefined ? finalPayload.cpu_load : finalPayload.cpuLoad;
+      if (cpu !== null && cpu !== undefined) {
+        setTelemetry({
+          cpuLoad: cpu,
+          ramLoad: finalPayload.ram_load !== undefined ? finalPayload.ram_load : finalPayload.ramLoad,
+          diskLoad: finalPayload.disk_load !== undefined ? finalPayload.disk_load : finalPayload.diskLoad,
+          temperature: finalPayload.temperature || 45,
+          syncActive: finalPayload.sync_active !== undefined ? finalPayload.sync_active : true
+        });
+      }
+
+      const jarvisMsg = {
+        id: `msg-${Date.now() + 1}`,
+        sender: 'jarvis',
+        text: finalPayload.message || 'JARVIS online.',
+        timestamp: new Date()
+      };
+
+      setMessages(prev => [...prev, jarvisMsg]);
+      setIsThinking(false);
+
+      // Refresh DB files
+      await fetchReminders();
+      await fetchMemories();
+    }
 
     // Reset execution state to Idle after 2 seconds
     setTimeout(() => setExecutionState('Idle'), 2000);
 
     // Trigger local reminder creation only if backend call failed (offline override mode)
-    if (!response.success && localReminder) {
+    if ((!sseSuccess && !isConnected) && localReminder) {
       const newRem = {
         id: `rem-fallback-${Date.now()}`,
         text: localReminder.text,
