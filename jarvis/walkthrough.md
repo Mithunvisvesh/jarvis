@@ -243,5 +243,16 @@ We populated the local memory database with authentic, high-quality engineering 
 - **Memory File Seeding**: Populated [memory.json](file:///d:/mithun_files/Personal/5-Day%20AI%20Agents%20Intensive%20Vibe%20Coding%20Course%20With%20Google/Capstone%20Project/jarvis/data/memory.json) with 8 authentic historical facts, including implementations of the Agent2Agent protocol and MCP stdio subprocess, creation of the ShieldGig parametric insurance platform, and Lynx Eye digital marketing internships.
 - **Immersion Enhancement**: Removed generic max/dog placeholders in the default database, replacing them with professional, Capstone-ready engineering telemetry and project parameters.
 
+---
+
+## 🛠️ Day 8: Graceful Degradation & Error Handling
+
+### 1. Task 8.1 — Conversational Fallbacks for Tool Failures
+We wrapped tool executions to handle environmental glitches and connection errors gracefully:
+- **Exception Catching**: Modified `BackgroundDataAgent.handle_intent` in [a2a_agents.py](file:///d:/mithun_files/Personal/5-Day%20AI%20Agents%20Intensive%20Vibe%20Coding%20Course%20With%20Google/Capstone%20Project/jarvis/app/a2a_agents.py) to wrap all tool/database calls in try-except blocks. If an exception occurs, it publishes a `TOOL_FAILURE` event on the bus and sets the intent parameter to `"TOOL_FAILURE"`.
+- **System Error Handler**: Implemented a new `"TOOL_FAILURE"` routing branch in `UIFrontendAgent.handle_data` in [a2a_agents.py](file:///d:/mithun_files/Personal/5-Day%20AI%20Agents%20Intensive%20Vibe%20Coding%20Course%20With%20Google/Capstone%20Project/jarvis/app/a2a_agents.py). It queries Gemini to write a calm, reassuring conversational apology explaining that we are having connection issues but are online and ready to assist.
+- **Robust Apology Fallback**: Hardcoded a conversational default apology if Gemini calls are blocked by credentials or sandbox limitations: *"I'm having trouble connecting to the system diagnostics at the moment, but I am still online and ready to assist with your agenda."*
+
+
 
 

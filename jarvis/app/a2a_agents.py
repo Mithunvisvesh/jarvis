@@ -79,72 +79,83 @@ class BackgroundDataAgent(A2AAgentBase):
         self.publish_event("THINKING", workflow_id, request_id, {"message": f"BackgroundDataAgent handling background tasks for intent [{intent}]..."})
 
         raw_data = {}
-        if intent == "SYSTEM":
-            self.publish_event("TOOL_START", workflow_id, request_id, {"tool": "get_system_stats", "message": "Invoking MCP get_system_stats..."})
-            try:
-                stats = call_mcp_tool("get_system_stats")
-                self.publish_event("TOOL_COMPLETE", workflow_id, request_id, {"tool": "get_system_stats", "stats": stats})
-                raw_data["stats"] = stats
-            except Exception as e:
-                self.publish_event("TOOL_ERROR", workflow_id, request_id, {"tool": "get_system_stats", "error": str(e)})
+        try:
+            if intent == "SYSTEM":
+                self.publish_event("TOOL_START", workflow_id, request_id, {"tool": "get_system_stats", "message": "Invoking MCP get_system_stats..."})
+                try:
+                    stats = call_mcp_tool("get_system_stats")
+                    self.publish_event("TOOL_COMPLETE", workflow_id, request_id, {"tool": "get_system_stats", "stats": stats})
+                    raw_data["stats"] = stats
+                except Exception as e:
+                    self.publish_event("TOOL_ERROR", workflow_id, request_id, {"tool": "get_system_stats", "error": str(e)})
+                    raise e
 
-        elif intent == "MEMORY_STORE":
-            self.publish_event("MEMORY_STORE", workflow_id, request_id, {"message": "Extracting and storing fact..."})
-            fact_text = ""
-            try:
-                client = Client()
-                response = client.models.generate_content(
-                    model="gemini-2.5-flash",
-                    contents=prompt,
-                    config=types.GenerateContentConfig(
-                        system_instruction="You are a fact extractor. Extract the main fact declared by the user as a clean single declarative sentence. Keep it concise. Refer to the user's scheduled tasks and active reminders as their Agenda. Never use the term Temporal Buffer."
+            elif intent == "MEMORY_STORE":
+                self.publish_event("MEMORY_STORE", workflow_id, request_id, {"message": "Extracting and storing fact..."})
+                fact_text = ""
+                try:
+                    client = Client()
+                    response = client.models.generate_content(
+                        model="gemini-2.5-flash",
+                        contents=prompt,
+                        config=types.GenerateContentConfig(
+                            system_instruction="You are a fact extractor. Extract the main fact declared by the user as a clean single declarative sentence. Keep it concise. Refer to the user's scheduled tasks and active reminders as their Agenda. Never use the term Temporal Buffer."
+                        )
                     )
-                )
-                if response.text:
-                    fact_text = response.text.strip()
-            except Exception:
-                pass
+                    if response.text:
+                        fact_text = response.text.strip()
+                except Exception:
+                    pass
 
-            if not fact_text:
-                from app.memory_agent import clean_fact_offline
-                fact_text = clean_fact_offline(prompt)
+                if not fact_text:
+                    from app.memory_agent import clean_fact_offline
+                    fact_text = clean_fact_offline(prompt)
 
-            try:
-                call_mcp_tool("get_memories")  # Verify MCP works
-                stored = add_fact(fact_text)
-                memory_status = stored.get("status", "created")
-                self.publish_event("MEMORY_STORED", workflow_id, request_id, {
-                    "fact": fact_text,
-                    "status": memory_status
-                })
-                raw_data["stored_fact"] = fact_text
-                raw_data["memory_status"] = memory_status
-            except Exception as e:
-                self.publish_event("MEMORY_ERROR", workflow_id, request_id, {"error": str(e)})
+                try:
+                    call_mcp_tool("get_memories")  # Verify MCP works
+                    stored = add_fact(fact_text)
+                    memory_status = stored.get("status", "created")
+                    self.publish_event("MEMORY_STORED", workflow_id, request_id, {
+                        "fact": fact_text,
+                        "status": memory_status
+                    })
+                    raw_data["stored_fact"] = fact_text
+                    raw_data["memory_status"] = memory_status
+                except Exception as e:
+                    self.publish_event("MEMORY_ERROR", workflow_id, request_id, {"error": str(e)})
+                    raise e
 
-        elif intent == "MEMORY_RECALL":
-            self.publish_event("MEMORY_RECALL", workflow_id, request_id, {"message": "Recalling semantic context..."})
-            try:
-                result = recall_facts(prompt)
-                self.publish_event("MEMORY_RECALLED", workflow_id, request_id, {"result": result})
-                raw_data["recalled_fact"] = result
-            except Exception as e:
-                self.publish_event("MEMORY_ERROR", workflow_id, request_id, {"error": str(e)})
+            elif intent == "MEMORY_RECALL":
+                self.publish_event("MEMORY_RECALL", workflow_id, request_id, {"message": "Recalling semantic context..."})
+                try:
+                    result = recall_facts(prompt)
+                    self.publish_event("MEMORY_RECALLED", workflow_id, request_id, {"result": result})
+                    raw_data["recalled_fact"] = result
+                except Exception as e:
+                    self.publish_event("MEMORY_ERROR", workflow_id, request_id, {"error": str(e)})
+                    raise e
 
-        elif intent == "REMINDER":
-            self.publish_event("REMINDER_CREATE", workflow_id, request_id, {"message": "Scheduling temporal reminder..."})
-            try:
-                parsed = parse_reminder(prompt)
-                rem = add_reminder(
-                    title=parsed["title"],
-                    rtype=parsed["type"],
-                    time=parsed["time"],
-                    day=parsed["day"]
-                )
-                self.publish_event("REMINDER_CREATED", workflow_id, request_id, {"reminder": rem})
-                raw_data["created_reminder"] = rem
-            except Exception as e:
-                self.publish_event("REMINDER_ERROR", workflow_id, request_id, {"error": str(e)})
+            elif intent == "REMINDER":
+                self.publish_event("REMINDER_CREATE", workflow_id, request_id, {"message": "Scheduling temporal reminder..."})
+                try:
+                    parsed = parse_reminder(prompt)
+                    rem = add_reminder(
+                        title=parsed["title"],
+                        rtype=parsed["type"],
+                        time=parsed["time"],
+                        day=parsed["day"]
+                    )
+                    self.publish_event("REMINDER_CREATED", workflow_id, request_id, {"reminder": rem})
+                    raw_data["created_reminder"] = rem
+                except Exception as e:
+                    self.publish_event("REMINDER_ERROR", workflow_id, request_id, {"error": str(e)})
+                    raise e
+        except Exception as e:
+            # Wrap the tool failure in a TOOL_FAILURE state
+            self.publish_event("TOOL_FAILURE", workflow_id, request_id, {"error": str(e), "failed_intent": intent})
+            raw_data["failed_intent"] = intent
+            raw_data["error"] = str(e)
+            intent = "TOOL_FAILURE"
 
         # Delegate gathered data to UIFrontendAgent via Event Bus
         self.publish_event("BACKGROUND_DATA_COMPLETE", workflow_id, request_id, {
@@ -193,7 +204,29 @@ class UIFrontendAgent(A2AAgentBase):
         route = intent
         action_taken = None
 
-        if intent == "SYSTEM":
+        if intent == "TOOL_FAILURE":
+            failed_intent = raw_data.get("failed_intent", "SYSTEM")
+            error_msg = raw_data.get("error", "Unknown connection error")
+            action_taken = f"System Error Handler: Intercepted tool exception for {failed_intent} ({error_msg})"
+            
+            try:
+                client = Client()
+                response = client.models.generate_content(
+                    model="gemini-2.5-flash",
+                    contents=f"A connection or system error occurred while executing the user request (intent: '{failed_intent}', error: '{error_msg}'). Write a calm, reassuring, conversational apology explaining that we are having connection issues but are online and ready to assist.",
+                    config=types.GenerateContentConfig(
+                        system_instruction=self.system_prompt
+                    )
+                )
+                if response.text:
+                    message = response.text.strip()
+            except Exception:
+                pass
+                
+            if not message:
+                message = "I'm having trouble connecting to the system diagnostics at the moment, but I am still online and ready to assist with your agenda."
+
+        elif intent == "SYSTEM":
             stats = raw_data.get("stats", {})
             cpu_load = stats.get("cpuLoad", cpu_load)
             ram_load = stats.get("ramLoad", ram_load)
