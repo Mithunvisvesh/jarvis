@@ -14,14 +14,42 @@ import {
 const JarvisContext = createContext(undefined);
 
 export function JarvisProvider({ children }) {
-  const [messages, setMessages] = useState([
-    {
-      id: 'init',
-      sender: 'jarvis',
-      text: 'JARVIS online. Core synchronization active. System diagnostics normal. Instruct me to analyze data, schedule tasks, or check local system state.',
-      timestamp: new Date()
+  const [messages, setMessages] = useState(() => {
+    try {
+      const stored = window.localStorage.getItem('jarvis_chat_session');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed.map(msg => ({
+            ...msg,
+            timestamp: msg.timestamp ? new Date(msg.timestamp) : new Date()
+          }));
+        }
+      }
+    } catch (e) {
+      console.error("Failed to hydrate chat session from localStorage:", e);
     }
-  ]);
+    return [
+      {
+        id: 'init',
+        sender: 'jarvis',
+        text: 'JARVIS online. Core synchronization active. System diagnostics normal. Instruct me to analyze data, schedule tasks, or check local system state.',
+        timestamp: new Date()
+      }
+    ];
+  });
+
+  const [currentRequestEvents, setCurrentRequestEvents] = useState([]);
+
+  // Serialize messages to localStorage whenever they change
+  useEffect(() => {
+    try {
+      window.localStorage.setItem('jarvis_chat_session', JSON.stringify(messages));
+    } catch (e) {
+      console.error("Failed to save chat session to localStorage:", e);
+    }
+  }, [messages]);
+
   const [isThinking, setIsThinking] = useState(false);
   const [isDeveloperMode, setIsDeveloperMode] = useState(false);
   const [executionState, setExecutionState] = useState('Idle');
@@ -240,7 +268,7 @@ export function JarvisProvider({ children }) {
 
   // Handler to send message to FastAPI
   const sendMessage = async (text) => {
-    if (!text.trim()) return;
+    if (!text.trim() || isThinking) return;
 
     const userMsg = {
       id: `msg-${Date.now()}`,
@@ -253,6 +281,7 @@ export function JarvisProvider({ children }) {
     setIsThinking(true);
     addTimelineEvent('user', `Query submitted: "${text}"`);
     setExecutionState('Analyzing Request');
+    setCurrentRequestEvents([]); // Reset events for new request
 
     const localReminder = parseReminderInPrompt(text);
     let sseSuccess = false;
@@ -292,6 +321,9 @@ export function JarvisProvider({ children }) {
               if (dataStr) {
                 try {
                   const event = JSON.parse(dataStr);
+                  
+                  // Append every event to currentRequestEvents for telemetry/dashboard
+                  setCurrentRequestEvents(prev => [...prev, event]);
                   
                   // Map event type to executionState
                   switch (event.event_type) {
@@ -337,6 +369,30 @@ export function JarvisProvider({ children }) {
                       break;
                     case 'RESPONSE_SYNTHESIS':
                       setExecutionState('Synthesizing Response');
+                      break;
+                    case 'PARTIAL_TEXT':
+                      if (event.payload && event.payload.data && event.payload.data.text) {
+                        const chunk = event.payload.data.text;
+                        setMessages(prev => {
+                          const last = prev[prev.length - 1];
+                          if (last && last.id === 'jarvis-streaming') {
+                            return [
+                              ...prev.slice(0, -1),
+                              { ...last, text: last.text + chunk }
+                            ];
+                          } else {
+                            return [
+                              ...prev,
+                              {
+                                id: 'jarvis-streaming',
+                                sender: 'jarvis',
+                                text: chunk,
+                                timestamp: new Date()
+                              }
+                            ];
+                          }
+                        });
+                      }
                       break;
                     case 'COMPLETE':
                       setExecutionState('Completed');
@@ -441,15 +497,32 @@ export function JarvisProvider({ children }) {
         });
       }
 
-      const jarvisMsg = {
-        id: `msg-${Date.now() + 1}`,
-        sender: 'jarvis',
-        text: finalPayload.message || 'JARVIS online.',
-        action_taken: finalPayload.action_taken || null,
-        timestamp: new Date()
-      };
-
-      setMessages(prev => [...prev, jarvisMsg]);
+      setMessages(prev => {
+        const last = prev[prev.length - 1];
+        if (last && last.id === 'jarvis-streaming') {
+          return [
+            ...prev.slice(0, -1),
+            {
+              id: `msg-${Date.now() + 1}`,
+              sender: 'jarvis',
+              text: finalPayload.message || last.text || 'JARVIS online.',
+              action_taken: finalPayload.action_taken || null,
+              timestamp: new Date()
+            }
+          ];
+        } else {
+          return [
+            ...prev,
+            {
+              id: `msg-${Date.now() + 1}`,
+              sender: 'jarvis',
+              text: finalPayload.message || 'JARVIS online.',
+              action_taken: finalPayload.action_taken || null,
+              timestamp: new Date()
+            }
+          ];
+        }
+      });
       setIsThinking(false);
 
       // Refresh DB files
@@ -474,6 +547,7 @@ export function JarvisProvider({ children }) {
   };
 
   const clearChat = () => {
+    window.localStorage.removeItem('jarvis_chat_session');
     setMessages([
       {
         id: `clear-${Date.now()}`,
@@ -482,18 +556,64 @@ export function JarvisProvider({ children }) {
         timestamp: new Date()
       }
     ]);
+    setCurrentRequestEvents([]);
     addTimelineEvent('system', 'Terminal chat logs cleared.');
   };
 
   const wipeSessionContext = async (userId = 'user_01', sessionId = 'default_session') => {
     try {
-      const res = await resetSessionContext(userId, sessionId);
-      if (res && res.status === 'success') {
+      const response = await fetch('http://localhost:8001/clear_session', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          user_id: userId,
+          session_id: sessionId
+        }),
+      });
+      if (response.ok) {
         addTimelineEvent('system', 'Session context and working memory wiped on backend.');
         return true;
       }
     } catch (err) {
       console.error("Failed to wipe session context:", err);
+    }
+    return false;
+  };
+
+  const resetConversation = async (userId = 'user_01', sessionId = 'default_session') => {
+    // 1. Clear local storage and state
+    window.localStorage.removeItem('jarvis_chat_session');
+    setMessages([
+      {
+        id: `init-${Date.now()}`,
+        sender: 'jarvis',
+        text: 'JARVIS online. Core synchronization active. System diagnostics normal. Instruct me to analyze data, schedule tasks, or check local system state.',
+        timestamp: new Date()
+      }
+    ]);
+    setCurrentRequestEvents([]);
+    addTimelineEvent('system', 'Local chat cache and logs cleared.');
+
+    // 2. Call backend /clear_session
+    try {
+      const response = await fetch('http://localhost:8001/clear_session', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          user_id: userId,
+          session_id: sessionId
+        }),
+      });
+      if (response.ok) {
+        addTimelineEvent('system', 'Session context and working memory wiped on backend.');
+        return true;
+      }
+    } catch (err) {
+      console.error("Failed to wipe session context on backend:", err);
     }
     return false;
   };
@@ -512,6 +632,7 @@ export function JarvisProvider({ children }) {
       isConnected,
       isDeveloperMode,
       setIsDeveloperMode,
+      currentRequestEvents,
       sendMessage,
       addReminder,
       toggleReminder,
@@ -520,7 +641,8 @@ export function JarvisProvider({ children }) {
       setDueReminders,
       addTimelineEvent,
       clearChat,
-      wipeSessionContext
+      wipeSessionContext,
+      resetConversation
     }}>
       {children}
     </JarvisContext.Provider>

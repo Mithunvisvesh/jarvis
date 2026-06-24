@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useJarvis } from '../context/JarvisContext';
-import { Send, Eye, ShieldAlert, Cpu, Trash2, Bell, Code, Database } from 'lucide-react';
+import { Send, Eye, ShieldAlert, Cpu, Trash2, Bell, Code, Database, Mic, MicOff } from 'lucide-react';
 import DemoPanel from './DemoPanel';
 
 function SystemStatus({ executionState, isConnected }) {
@@ -62,10 +62,70 @@ export default function ChatInterface() {
     toggleReminder,
     isDeveloperMode,
     setIsDeveloperMode,
-    wipeSessionContext
+    wipeSessionContext,
+    resetConversation
   } = useJarvis();
   const [input, setInput] = useState('');
   const messagesEndRef = useRef(null);
+
+  const [isListening, setIsListening] = useState(false);
+  const recognitionRef = useRef(null);
+  const latestInput = useRef('');
+
+  useEffect(() => {
+    latestInput.current = input;
+  }, [input]);
+
+  useEffect(() => {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (SpeechRecognition) {
+      const recognition = new SpeechRecognition();
+      recognition.continuous = false;
+      recognition.interimResults = true;
+      recognition.lang = 'en-US';
+
+      recognition.onstart = () => {
+        setIsListening(true);
+      };
+
+      recognition.onresult = (event) => {
+        const transcript = Array.from(event.results)
+          .map(result => result[0])
+          .map(result => result.transcript)
+          .join('');
+        setInput(transcript);
+      };
+
+      recognition.onerror = (event) => {
+        console.error('Speech recognition error:', event.error);
+        setIsListening(false);
+      };
+
+      recognition.onend = () => {
+        setIsListening(false);
+        if (latestInput.current.trim()) {
+          sendMessage(latestInput.current.trim());
+          setInput('');
+        }
+      };
+
+      recognitionRef.current = recognition;
+    }
+  }, []);
+
+  const toggleListening = () => {
+    if (!recognitionRef.current) {
+      alert("Speech recognition is not supported in this browser. Please use Chrome, Edge, or Safari.");
+      return;
+    }
+
+    if (isListening) {
+      recognitionRef.current.stop();
+    } else {
+      setInput('');
+      recognitionRef.current.start();
+    }
+  };
 
   const stages = ['Analyzing Request', 'Routing Intent', 'Running Tools', 'Synthesizing Response', 'Completed'];
 
@@ -90,7 +150,7 @@ export default function ChatInterface() {
 
   const handleSend = (e) => {
     e.preventDefault();
-    if (!input.trim()) return;
+    if (isThinking || !input.trim()) return;
     sendMessage(input);
     setInput('');
   };
@@ -210,49 +270,13 @@ export default function ChatInterface() {
             <span>DEV</span>
           </button>
 
-          {isDeveloperMode && (
-            <button 
-              onClick={() => wipeSessionContext()}
-              title="Wipe Session Context (Backend State)"
-              style={{
-                background: 'none',
-                border: '1px solid rgba(255, 0, 128, 0.3)',
-                color: 'var(--accent-pink)',
-                padding: '4px 8px',
-                borderRadius: '4px',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '6px',
-                fontSize: '10px',
-                fontFamily: 'var(--font-nav)',
-                fontWeight: 'bold',
-                transition: 'all 0.2s',
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = 'rgba(255, 0, 128, 0.05)';
-                e.currentTarget.style.boxShadow = 'var(--glow-pink)';
-                e.currentTarget.style.borderColor = 'var(--accent-pink)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = 'transparent';
-                e.currentTarget.style.boxShadow = 'none';
-                e.currentTarget.style.borderColor = 'rgba(255, 0, 128, 0.3)';
-              }}
-            >
-              <Database size={12} />
-              <span>WIPE SESSION</span>
-            </button>
-          )}
-
           <button 
-            onClick={clearChat}
-            title="Clear Chat View (Local UI)"
+            onClick={() => resetConversation()}
+            title="Reset Conversation (Clear Local Storage & Backend Context)"
             style={{
               background: 'none',
-              border: '1px solid rgba(255, 255, 255, 0.1)',
-              color: 'var(--text-secondary)',
+              border: '1px solid rgba(255, 0, 128, 0.3)',
+              color: 'var(--accent-pink)',
               padding: '4px 8px',
               borderRadius: '4px',
               cursor: 'pointer',
@@ -263,19 +287,21 @@ export default function ChatInterface() {
               fontSize: '10px',
               fontFamily: 'var(--font-nav)',
               fontWeight: 'bold',
-              transition: 'all 0.2s'
+              transition: 'all 0.2s',
             }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.color = 'var(--accent-pink)';
+              e.currentTarget.style.backgroundColor = 'rgba(255, 0, 128, 0.05)';
+              e.currentTarget.style.boxShadow = 'var(--glow-pink)';
               e.currentTarget.style.borderColor = 'var(--accent-pink)';
             }}
             onMouseLeave={(e) => {
-              e.currentTarget.style.color = 'var(--text-secondary)';
-              e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.1)';
+              e.currentTarget.style.backgroundColor = 'transparent';
+              e.currentTarget.style.boxShadow = 'none';
+              e.currentTarget.style.borderColor = 'rgba(255, 0, 128, 0.3)';
             }}
           >
-            <Trash2 size={12} />
-            <span>CLEAR CHAT</span>
+            <Database size={12} />
+            <span>RESET CONVERSATION</span>
           </button>
         </div>
       </div>
@@ -594,8 +620,8 @@ export default function ChatInterface() {
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            disabled={isThinking}
-            placeholder={isThinking ? 'JARVIS is thinking...' : 'Input operational prompts (e.g. check system diagnostics)...'}
+            disabled={isThinking || isListening}
+            placeholder={isListening ? 'Listening... Speak now.' : (isThinking ? 'JARVIS is thinking...' : 'Input operational prompts (e.g. check system diagnostics)...')}
             style={{
               flex: 1,
               background: 'rgba(0, 0, 0, 0.4)',
@@ -618,23 +644,44 @@ export default function ChatInterface() {
             }}
           />
           <button 
-            type="submit"
-            disabled={isThinking || !input.trim()}
+            type="button"
+            onClick={toggleListening}
+            disabled={isThinking}
             style={{
-              background: input.trim() ? 'var(--accent-cyan)' : 'rgba(0, 212, 255, 0.1)',
+              background: isListening ? 'rgba(255, 0, 128, 0.15)' : 'rgba(255, 255, 255, 0.05)',
+              border: isListening ? '1px solid var(--accent-pink)' : '1px solid var(--border-muted)',
+              color: isListening ? 'var(--accent-pink)' : 'var(--text-secondary)',
+              padding: '0 12px',
+              borderRadius: '4px',
+              cursor: isThinking ? 'not-allowed' : 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              transition: 'all 0.3s ease',
+              boxShadow: isListening ? 'var(--glow-pink)' : 'none',
+            }}
+            title={isListening ? "Listening... Speak now. Tap to stop." : "Push to Talk (MVP Voice)"}
+          >
+            {isListening ? <Mic size={16} /> : <MicOff size={16} />}
+          </button>
+          <button 
+            type="submit"
+            disabled={isThinking || isListening || !input.trim()}
+            style={{
+              background: input.trim() && !isListening ? 'var(--accent-cyan)' : 'rgba(0, 212, 255, 0.1)',
               color: '#000',
               border: 'none',
               padding: '0 20px',
               borderRadius: '4px',
-              cursor: input.trim() ? 'pointer' : 'not-allowed',
+              cursor: input.trim() && !isListening ? 'pointer' : 'not-allowed',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               transition: 'all 0.2s',
-              boxShadow: input.trim() ? 'var(--glow-cyan)' : 'none',
+              boxShadow: input.trim() && !isListening ? 'var(--glow-cyan)' : 'none',
             }}
             onMouseEnter={(e) => {
-              if (input.trim()) {
+              if (input.trim() && !isListening) {
                 e.currentTarget.style.filter = 'brightness(1.1)';
               }
             }}

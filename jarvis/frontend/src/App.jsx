@@ -6,7 +6,7 @@ import TelemetryPanel from './components/TelemetryPanel';
 import Agenda from './components/Agenda';
 import MemoryViewer from './components/MemoryViewer';
 import ActivityTimeline from './components/ActivityTimeline';
-import TraceViewer from './components/TraceViewer';
+import DeveloperPanel from './components/DeveloperPanel';
 import StatusBar from './components/StatusBar';
 import AgendaView from './components/AgendaView';
 import KnowledgeView from './components/KnowledgeView';
@@ -119,7 +119,7 @@ function Dashboard() {
               )}
               {activeRightTab === 'memory' && <MemoryViewer />}
               {activeRightTab === 'logs' && <ActivityTimeline />}
-              {activeRightTab === 'traces' && <TraceViewer />}
+              {activeRightTab === 'traces' && <DeveloperPanel />}
             </div>
           </div>
         )}
