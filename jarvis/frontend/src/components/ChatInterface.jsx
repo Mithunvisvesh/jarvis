@@ -3,6 +3,52 @@ import { useJarvis } from '../context/JarvisContext';
 import { Send, Eye, ShieldAlert, Cpu, Trash2, Bell, Code, Database } from 'lucide-react';
 import DemoPanel from './DemoPanel';
 
+function SystemStatus({ executionState, isConnected }) {
+  let statusColor = 'var(--accent-green)';
+  let glow = 'var(--glow-green)';
+  let animation = 'none';
+
+  if (!isConnected) {
+    statusColor = 'var(--accent-pink)';
+    glow = 'var(--glow-pink)';
+  } else if (executionState === 'Analyzing Request' || executionState === 'Running Tools') {
+    statusColor = 'var(--accent-cyan)';
+    glow = 'var(--glow-cyan)';
+    animation = 'pulse-cyan 1.5s infinite ease-in-out';
+  } else if (executionState === 'Routing Intent' || executionState === 'Synthesizing Response') {
+    statusColor = 'var(--accent-pink)';
+    glow = 'var(--glow-pink)';
+    animation = 'pulse-pink 1.5s infinite ease-in-out';
+  }
+
+  return (
+    <div 
+      title={!isConnected ? "OFFLINE" : `SYSTEM STATUS: ${executionState.toUpperCase()}`}
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '4px',
+        marginLeft: '4px',
+        cursor: 'help'
+      }}
+    >
+      <span 
+        style={{
+          width: '8px',
+          height: '8px',
+          borderRadius: '50%',
+          backgroundColor: statusColor,
+          boxShadow: glow,
+          display: 'inline-block',
+          animation: animation,
+          transition: 'all 0.3s ease'
+        }} 
+      />
+    </div>
+  );
+}
+
 export default function ChatInterface() {
   const { 
     messages, 
@@ -65,7 +111,6 @@ export default function ChatInterface() {
         flexDirection: 'column',
         height: '100%',
         backgroundColor: 'rgba(5, 8, 16, 0.65)',
-        borderRight: '1px solid var(--border-muted)',
         overflow: 'hidden',
         position: 'relative',
         transition: 'all 0.3s ease-in-out',
@@ -82,13 +127,14 @@ export default function ChatInterface() {
         background: 'rgba(10, 14, 24, 0.4)',
         flexShrink: 0
       }}>
-        <div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           <h1 style={{
             fontFamily: 'var(--font-header)',
             fontSize: '18px',
             fontWeight: '600',
-            letterSpacing: '1px',
+            letterSpacing: '1.5px',
             color: 'var(--text-primary)',
+            margin: 0,
             display: 'flex',
             alignItems: 'center',
             gap: '8px'
@@ -101,21 +147,12 @@ export default function ChatInterface() {
               border: '1px solid var(--border-cyan)',
               padding: '1px 5px',
               borderRadius: '3px',
-              verticalAlign: 'middle',
               background: 'rgba(0, 212, 255, 0.05)'
             }}>
-              v2.0-ADK
+              v2.0
             </span>
           </h1>
-          <p style={{
-            fontFamily: 'var(--font-nav)',
-            fontSize: '11px',
-            color: 'var(--text-secondary)',
-            marginTop: '2px',
-            letterSpacing: '0.5px'
-          }}>
-            SECURE INTELLECTUAL OVERLAY CORE
-          </p>
+          <SystemStatus executionState={executionState} isConnected={isConnected} />
         </div>
 
         {/* Action Buttons */}
@@ -139,30 +176,6 @@ export default function ChatInterface() {
               <span>{dueReminders.length} ALERT</span>
             </div>
           )}
-
-          {/* Connection status */}
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '6px',
-            marginRight: '8px',
-            fontSize: '10px',
-            fontFamily: 'var(--font-mono)',
-            color: isConnected ? 'var(--accent-green)' : 'var(--accent-pink)',
-            border: `1px solid ${isConnected ? 'var(--accent-green)40' : 'var(--accent-pink)40'}`,
-            padding: '3px 8px',
-            borderRadius: '10px',
-            background: isConnected ? 'rgba(0, 255, 159, 0.02)' : 'rgba(255, 0, 128, 0.02)'
-          }}>
-            <span style={{
-              width: '6px',
-              height: '6px',
-              borderRadius: '50%',
-              backgroundColor: isConnected ? 'var(--accent-green)' : 'var(--accent-pink)',
-              boxShadow: isConnected ? 'var(--glow-green)' : 'var(--glow-pink)'
-            }} />
-            {isConnected ? 'IPC_ONLINE' : 'IPC_OFFLINE'}
-          </div>
 
           <button 
             onClick={() => setIsDeveloperMode(!isDeveloperMode)}
@@ -397,10 +410,10 @@ export default function ChatInterface() {
               <div 
                 className={isJarvis ? "cyber-panel" : "cyber-panel cyber-panel-pink"}
                 style={{
-                  padding: '12px 16px',
-                  borderRadius: '4px',
-                  fontSize: '13px',
-                  lineHeight: '1.5',
+                  padding: '18px 24px',
+                  borderRadius: '6px',
+                  fontSize: '14px',
+                  lineHeight: '1.7',
                   color: 'var(--text-primary)',
                   letterSpacing: '0.2px',
                   whiteSpace: 'pre-wrap'
