@@ -229,4 +229,19 @@ We forced the LLM to transition from a reactive state to an active, helpful coll
 - **Anticipatory Suggestions**: Updated the prompt guidelines in [a2a_agents.py](file:///d:/mithun_files/Personal/5-Day%20AI%20Agents%20Intensive%20Vibe%20Coding%20Course%20With%20Google/Capstone%20Project/jarvis/app/a2a_agents.py) to mandate concluding complex queries or completed tasks with a single, highly relevant, and brief (one-sentence) proactive suggestion/follow-up question.
 - **Conversational Fallbacks Integration**: Incorporated proactive follow-up suggestions directly into the local conversational backup fallbacks (e.g. asking to set recurring daily alerts on reminders or monitoring CPU spikes on diagnostics).
 
+---
+
+## 🛠️ Day 7: Context Seeding & Identity Anchoring
+
+### 1. Task 7.1 — Core User Context Injection
+We hardcoded the essential reality of the user into the system so JARVIS possesses innate, unprompted knowledge of its creator and current primary objectives:
+- **Dedicated Configuration**: Created [config.py](file:///d:/mithun_files/Personal/5-Day%20AI%20Agents%20Intensive%20Vibe%20Coding%20Course%20With%20Google/Capstone%20Project/jarvis/app/config.py) declaring the `CORE_USER_CONTEXT` constant containing Mithun's academic details (4th-semester B.Tech CSE student), focus courses (OS, Computer Architecture), and critical objective (Delivering the JARVIS Capstone project by July 6).
+- **Dynamic Prompt Seeding**: Dynamically imported and injected the `CORE_USER_CONTEXT` string into the system instructions of `OrchestratorAgent` and the `system_prompt` instruction parameter of `UIFrontendAgent` on initialization inside [a2a_agents.py](file:///d:/mithun_files/Personal/5-Day%20AI%20Agents%20Intensive%20Vibe%20Coding%20Course%20With%20Google/Capstone%20Project/jarvis/app/a2a_agents.py).
+
+### 2. Task 7.2 — Pre-load the Episodic Memory Bank
+We populated the local memory database with authentic, high-quality engineering and academic history payloads:
+- **Memory File Seeding**: Populated [memory.json](file:///d:/mithun_files/Personal/5-Day%20AI%20Agents%20Intensive%20Vibe%20Coding%20Course%20With%20Google/Capstone%20Project/jarvis/data/memory.json) with 8 authentic historical facts, including implementations of the Agent2Agent protocol and MCP stdio subprocess, creation of the ShieldGig parametric insurance platform, and Lynx Eye digital marketing internships.
+- **Immersion Enhancement**: Removed generic max/dog placeholders in the default database, replacing them with professional, Capstone-ready engineering telemetry and project parameters.
+
+
 

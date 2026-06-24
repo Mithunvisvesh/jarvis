@@ -10,6 +10,7 @@ from tools.mcp_client import call_mcp_tool
 from app.memory_store import add_fact, recall_facts
 from app.reminder_parser import parse_reminder
 from app.reminder_store import add_reminder
+from app.config import CORE_USER_CONTEXT
 
 class A2AAgentBase:
     def __init__(self, name: str):
@@ -34,6 +35,7 @@ class A2AAgentBase:
 class OrchestratorAgent(A2AAgentBase):
     def __init__(self):
         super().__init__("orchestrator")
+        self.system_instruction = f"You are OrchestratorAgent. {CORE_USER_CONTEXT}"
 
     def run(self, workflow_id: str, request_id: str, prompt: str):
         self.publish_event("THINKING", workflow_id, request_id, {"message": "Analyzing prompt..."})
@@ -156,6 +158,7 @@ class UIFrontendAgent(A2AAgentBase):
         super().__init__("UI_Frontend_Agent")
         self.system_prompt = (
             "You are JARVIS, an AI Operating Companion.\n"
+            f"Core User Context:\n{CORE_USER_CONTEXT}\n\n"
             "NEVER use robotic, terminal-like, or third-person system language "
             "(e.g., avoid 'System updated', 'Action executed', 'Data fetched', 'Operational reminder parsed').\n"
             "Speak directly to the user in a calm, highly capable, and conversational tone.\n\n"
@@ -171,6 +174,7 @@ class UIFrontendAgent(A2AAgentBase):
             "- Bad: 'System diagnostics report: CPU Load: 28%.'\n"
             "  Good: 'Here is your system diagnostics report. Everything is running smoothly: CPU Load is at 28%. Shall I run an optimization script to clean up memory?'\n"
         )
+        self.system_instruction = self.system_prompt
 
     def handle_data(self, event: AgentEvent):
         workflow_id = event.payload.workflow_id
