@@ -219,8 +219,30 @@ async def chat_stream_endpoint(request: JarvisRequest):
         ui_frontend_agent = UIFrontendAgent()
         bg_agent = BackgroundAgent()
         
-        # Wire events
-        global_event_bus.subscribe("INTENT_DETECTED", bg_data_agent.handle_intent)
+        # Wire events with Fast Path bypass for CHAT
+        def handle_intent_routing(event):
+            intent = event.payload.data.get("intent")
+            if intent == "CHAT":
+                # Fast Path: Reconstruct BACKGROUND_DATA_COMPLETE and trigger ui_frontend_agent directly, bypassing BackgroundDataAgent
+                from app.event_bus import AgentEvent, EventPayload
+                bg_complete_event = AgentEvent(
+                    event_type="BACKGROUND_DATA_COMPLETE",
+                    sender="Background_Data_Agent",
+                    payload=EventPayload(
+                        request_id=event.payload.request_id,
+                        workflow_id=event.payload.workflow_id,
+                        data={
+                            "intent": "CHAT",
+                            "prompt": event.payload.data.get("prompt"),
+                            "raw_data": {}
+                        }
+                    )
+                )
+                ui_frontend_agent.handle_data(bg_complete_event)
+            else:
+                bg_data_agent.handle_intent(event)
+
+        global_event_bus.subscribe("INTENT_DETECTED", handle_intent_routing)
         global_event_bus.subscribe("BACKGROUND_DATA_COMPLETE", ui_frontend_agent.handle_data)
         
         async def run_workflow():

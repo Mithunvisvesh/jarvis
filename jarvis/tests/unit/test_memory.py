@@ -76,3 +76,22 @@ class TestMemorySystem(unittest.TestCase):
         success2 = delete_fact("non-existent-id")
         self.assertFalse(success2)
 
+    def test_prevent_duplicate_facts(self):
+        """Verifies duplicate/highly similar facts are prevented from clone creation."""
+        f1 = add_fact("My capstone deadline is July 6")
+        self.assertEqual(f1["status"], "created")
+        
+        # Exact duplicate
+        f2 = add_fact("My capstone deadline is July 6")
+        self.assertEqual(f2["status"], "acknowledged")
+        self.assertEqual(f2["id"], f1["id"])
+        
+        # High similarity (> 0.85)
+        f3 = add_fact("capstone deadline is July 6")
+        self.assertEqual(f3["status"], "acknowledged")
+        self.assertEqual(f3["id"], f1["id"])
+        
+        # Verify only one fact exists in DB
+        data = load_memory()
+        self.assertEqual(len(data["facts"]), 1)
+

@@ -30,6 +30,24 @@ def save_memory(data: dict):
 
 def add_fact(fact_text: str) -> dict:
     data = load_memory()
+    
+    # Pre-storage similarity check using difflib.SequenceMatcher
+    incoming_clean = clean_text_for_matching(fact_text)
+    incoming_sorted = " ".join(sorted(incoming_clean.split())) if incoming_clean else fact_text.lower().strip()
+    
+    for f in data.get("facts", []):
+        existing_clean = clean_text_for_matching(f["fact"])
+        existing_sorted = " ".join(sorted(existing_clean.split())) if existing_clean else f["fact"].lower().strip()
+        
+        score = SequenceMatcher(None, incoming_sorted, existing_sorted).ratio()
+        if score >= 0.85:
+            # Update the existing memory timestamp
+            f["created_at"] = datetime.now().isoformat()
+            save_memory(data)
+            f_copy = dict(f)
+            f_copy["status"] = "acknowledged"
+            return f_copy
+            
     new_fact = {
         "id": str(uuid.uuid4()),
         "fact": fact_text.strip(),
@@ -37,7 +55,9 @@ def add_fact(fact_text: str) -> dict:
     }
     data["facts"].append(new_fact)
     save_memory(data)
-    return new_fact
+    new_fact_copy = dict(new_fact)
+    new_fact_copy["status"] = "created"
+    return new_fact_copy
 
 def clean_text_for_matching(text: str) -> str:
     text = text.lower()

@@ -108,6 +108,7 @@ def orchestrator_node(ctx, node_input) -> Event:
         intent = "SYSTEM"
 
     ctx.state["route"] = intent
+    ctx.state["prompt"] = text
     return Event(route=intent, output=text)
 
 
@@ -115,7 +116,7 @@ def orchestrator_node(ctx, node_input) -> Event:
 def background_data_node(ctx, node_input) -> str:
     """Handles tool polling and memory/reminder updates in the background."""
     route = ctx.state.get("route", "CHAT")
-    prompt = str(node_input)
+    prompt = ctx.state.get("prompt") or str(node_input)
     
     session_id = "default"
     if hasattr(ctx, "session") and ctx.session:
@@ -181,7 +182,7 @@ def background_data_node(ctx, node_input) -> str:
 def ui_frontend_node(ctx, node_input) -> str:
     """Formats the final UI React state payload (role of UI_Frontend_Agent)."""
     route = ctx.state.get("route", "CHAT")
-    prompt = str(node_input)
+    prompt = ctx.state.get("prompt") or str(node_input)
     
     session_id = "default"
     if hasattr(ctx, "session") and ctx.session:
@@ -239,7 +240,8 @@ jarvis_core_workflow = Workflow(
     name="jarvis_core_workflow",
     edges=[
         Edge(from_node=START, to_node=orchestrator_node),
-        Edge(from_node=orchestrator_node, to_node=background_data_node),
+        Edge(from_node=orchestrator_node, to_node=background_data_node, route=["SYSTEM", "REMINDER", "MEMORY_STORE", "MEMORY_RECALL"]),
+        Edge(from_node=orchestrator_node, to_node=ui_frontend_node, route="CHAT"),
         Edge(from_node=background_data_node, to_node=ui_frontend_node)
     ]
 )

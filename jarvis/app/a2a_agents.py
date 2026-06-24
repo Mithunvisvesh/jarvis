@@ -109,9 +109,14 @@ class BackgroundDataAgent(A2AAgentBase):
 
             try:
                 call_mcp_tool("get_memories")  # Verify MCP works
-                add_fact(fact_text)
-                self.publish_event("MEMORY_STORED", workflow_id, request_id, {"fact": fact_text})
+                stored = add_fact(fact_text)
+                memory_status = stored.get("status", "created")
+                self.publish_event("MEMORY_STORED", workflow_id, request_id, {
+                    "fact": fact_text,
+                    "status": memory_status
+                })
                 raw_data["stored_fact"] = fact_text
+                raw_data["memory_status"] = memory_status
             except Exception as e:
                 self.publish_event("MEMORY_ERROR", workflow_id, request_id, {"error": str(e)})
 
@@ -182,8 +187,12 @@ class UIFrontendAgent(A2AAgentBase):
             )
             
         elif intent == "MEMORY_STORE":
+            memory_status = raw_data.get("memory_status", "created")
             stored_fact = raw_data.get("stored_fact", "")
-            message = f"Operational memory stored: \"{stored_fact}\"."
+            if memory_status == "acknowledged":
+                message = "I already have that noted."
+            else:
+                message = f"Operational memory stored: \"{stored_fact}\"."
             
         elif intent == "MEMORY_RECALL":
             result = raw_data.get("recalled_fact", {})
