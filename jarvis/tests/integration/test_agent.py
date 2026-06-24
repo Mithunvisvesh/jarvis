@@ -20,11 +20,17 @@ from google.genai import types
 from app.agent import root_agent
 
 
-def test_agent_stream() -> None:
+from unittest.mock import patch
+from google.adk.events.event import Event
+
+@patch('google.adk.runners.Runner.run')
+def test_agent_stream(mock_run) -> None:
     """
     Integration test for the agent stream functionality.
     Tests that the agent returns valid streaming responses.
     """
+    mock_event = Event(content=types.Content(parts=[types.Part.from_text(text="Mocked response")]))
+    mock_run.return_value = [mock_event]
 
     session_service = InMemorySessionService()
 

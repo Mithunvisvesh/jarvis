@@ -1,0 +1,14 @@
+version: '3.8'
+
+services:
+  backend:
+    build: .
+    ports:
+      - "8001:8001"
+    environment:
+      - GOOGLE_GENAI_USE_VERTEXAI=True
+      - GOOGLE_CLOUD_PROJECT=dependable-data-500016-s5
+      - USE_WORKFLOW=true
+    volumes:
+      - ./data:/workspace/data
+      - ./logs:/workspace/logs

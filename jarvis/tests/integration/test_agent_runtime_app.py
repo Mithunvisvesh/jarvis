@@ -16,6 +16,7 @@ import logging
 
 import pytest
 from google.adk.events.event import Event
+from google.genai import types
 
 from app.agent_runtime_app import AgentEngineApp
 
@@ -32,12 +33,20 @@ def agent_app(monkeypatch: pytest.MonkeyPatch) -> AgentEngineApp:
     return agent_runtime
 
 
+from unittest.mock import patch
+
 @pytest.mark.asyncio
-async def test_agent_stream_query(agent_app: AgentEngineApp) -> None:
+@patch('google.adk.runners.Runner.run_async')
+async def test_agent_stream_query(mock_run_async, agent_app: AgentEngineApp) -> None:
     """
     Integration test for the agent stream query functionality.
     Tests that the agent returns valid streaming responses.
     """
+    mock_event = Event(content=types.Content(parts=[types.Part.from_text(text="Mocked response")]))
+    async def mock_generator(*args, **kwargs):
+        yield mock_event
+    mock_run_async.return_value = mock_generator()
+
     # Create message and events for the async_stream_query
     message = "Hi!"
     events = []

@@ -1,5 +1,14 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { sendChatMessage } from '../services/api';
+import { 
+  sendChatMessage, 
+  getReminders, 
+  createReminder, 
+  updateReminderStatus, 
+  deleteReminder,
+  getMemories,
+  deleteMemory,
+  getDueReminders
+} from '../services/api';
 
 const JarvisContext = createContext(undefined);
 
@@ -13,6 +22,7 @@ export function JarvisProvider({ children }) {
     }
   ]);
   const [isThinking, setIsThinking] = useState(false);
+  const [executionState, setExecutionState] = useState('Idle');
   const [gpuLoad, setGpuLoad] = useState(10);
   const [isConnected, setIsConnected] = useState(true);
   
@@ -24,17 +34,82 @@ export function JarvisProvider({ children }) {
     syncActive: true
   });
 
-  const [reminders, setReminders] = useState([
-    { id: 'rem-1', text: 'Go for a morning walk', time: '5:00 AM', completed: false },
-    { id: 'rem-2', text: 'Take medicine.', time: '8:00 AM', completed: false },
-    { id: 'rem-3', text: 'Team meeting on Telegram', time: '10:00 AM', completed: false }
+  const [reminders, setReminders] = useState([]);
+  const [memories, setMemories] = useState([]);
+  const [dueReminders, setDueReminders] = useState([]);
+  const [timelineEvents, setTimelineEvents] = useState([
+    {
+      id: 'init-evt',
+      type: 'system',
+      message: 'JARVIS core initialized. Offline-first DB synchronization active.',
+      timestamp: new Date()
+    }
   ]);
+
+  // Log a new timeline activity event
+  const addTimelineEvent = (type, message) => {
+    setTimelineEvents(prev => [
+      {
+        id: `evt-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+        type,
+        message,
+        timestamp: new Date()
+      },
+      ...prev
+    ]);
+  };
+
+  // Fetch all reminders from the backend
+  const fetchReminders = async () => {
+    try {
+      const data = await getReminders();
+      if (Array.isArray(data)) {
+        setReminders(data.map(item => ({
+          id: item.id,
+          text: item.title,
+          time: item.day ? `${item.time} (${item.day})` : item.time,
+          completed: item.status === 'completed'
+        })));
+      }
+    } catch (err) {
+      console.error("Failed to fetch reminders:", err);
+    }
+  };
+
+  // Fetch all memories from the backend
+  const fetchMemories = async () => {
+    try {
+      const data = await getMemories();
+      if (data && Array.isArray(data.facts)) {
+        setMemories(data.facts);
+      }
+    } catch (err) {
+      console.error("Failed to fetch memories:", err);
+    }
+  };
+
+  // Delete a memory from the backend
+  const removeMemory = async (id) => {
+    try {
+      const res = await deleteMemory(id);
+      if (res && res.status === 'success') {
+        addTimelineEvent('memory', `Memory block deleted successfully`);
+        await fetchMemories();
+      }
+    } catch (err) {
+      console.error("Failed to delete memory:", err);
+    }
+  };
+
+  useEffect(() => {
+    fetchReminders();
+    fetchMemories();
+  }, []);
 
   // Periodic Telemetry Simulator to make meters "dance" in the UI
   useEffect(() => {
     const timer = setInterval(() => {
       setTelemetry(prev => {
-        // Only fluctuate if we are active
         const change = (Math.random() - 0.5) * 4; // +/- 2%
         const cpu = Math.max(10, Math.min(95, Math.round(prev.cpuLoad + change)));
         const ram = Math.max(20, Math.min(90, Math.round(prev.ramLoad + (Math.random() - 0.5) * 1.5)));
@@ -48,7 +123,6 @@ export function JarvisProvider({ children }) {
         };
       });
       
-      // Slightly drift GPU load too unless actively processing
       if (!isThinking) {
         setGpuLoad(prev => {
           const drift = (Math.random() - 0.5) * 2;
@@ -60,22 +134,96 @@ export function JarvisProvider({ children }) {
     return () => clearInterval(timer);
   }, [isThinking]);
 
-  // Handler to add a reminder
-  const addReminder = (text, time) => {
-    const newRem = {
-      id: `rem-${Date.now()}`,
-      text: text,
-      time: time || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      completed: false
+  // Periodic Polling for Due Reminders
+  useEffect(() => {
+    const checkDueReminders = async () => {
+      try {
+        const due = await getDueReminders();
+        if (Array.isArray(due) && due.length > 0) {
+          setDueReminders(prev => {
+            // Only add reminders that aren't already marked as due/notified
+            const newDue = due.filter(d => !prev.some(p => p.id === d.id));
+            if (newDue.length > 0) {
+              newDue.forEach(item => {
+                addTimelineEvent('reminder', `REMINDER DUE: "${item.title}"`);
+              });
+              return [...prev, ...newDue];
+            }
+            return prev;
+          });
+        }
+      } catch (err) {
+        console.error("Failed to poll due reminders:", err);
+      }
     };
-    setReminders(prev => [...prev, newRem]);
+    
+    // Check initially and then every 10 seconds
+    checkDueReminders();
+    const interval = setInterval(checkDueReminders, 10000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Handler to add a reminder
+  const addReminder = async (text, time) => {
+    let day = null;
+    let type = "one-time";
+    
+    const weeklyMatch = text.match(/every\s+(sunday|monday|tuesday|wednesday|thursday|friday|saturday)/i);
+    if (weeklyMatch) {
+      type = "weekly";
+      day = weeklyMatch[1].charAt(0).toUpperCase() + weeklyMatch[1].slice(1).toLowerCase();
+    } else if (text.toLowerCase().includes("daily") || text.toLowerCase().includes("every day")) {
+      type = "daily";
+    } else if (text.toLowerCase().includes("tomorrow")) {
+      day = "tomorrow";
+    }
+
+    // Clean title: strip "remind me to", etc.
+    let title = text;
+    const prefixMatch = text.match(/^(remind me to|remind me|add reminder to|add reminder for|schedule reminder for|schedule|please remind me to)\s+(.*)$/i);
+    if (prefixMatch) {
+      title = prefixMatch[2];
+    }
+    title = title.replace(/\s+(every|at|on|tomorrow|daily|weekly|schedule)\b.*$/i, "").trim();
+    if (title.toLowerCase().startsWith("to ")) {
+      title = title.slice(3);
+    } else if (title.toLowerCase().startsWith("for ")) {
+      title = title.slice(4);
+    }
+
+    const newReminder = await createReminder(title, time || "12:00 PM", type, day);
+    if (newReminder) {
+      addTimelineEvent('reminder', `Created reminder: "${title}" at ${time || '12:00 PM'}`);
+    }
+    await fetchReminders();
   };
 
-  // Handler to toggle a reminder
-  const toggleReminder = (id) => {
-    setReminders(prev =>
-      prev.map(rem => (rem.id === id ? { ...rem, completed: !rem.completed } : rem))
-    );
+  // Handler to toggle a reminder completed status
+  const toggleReminder = async (id) => {
+    if (String(id).startsWith("rem-fallback-")) {
+      setReminders(prev =>
+        prev.map(rem => (rem.id === id ? { ...rem, completed: !rem.completed } : rem))
+      );
+      return;
+    }
+    
+    const target = reminders.find(r => r.id === id);
+    if (!target) return;
+    const newStatus = target.completed ? 'pending' : 'completed';
+    await updateReminderStatus(id, newStatus);
+    await fetchReminders();
+    addTimelineEvent('reminder', `Updated reminder status: "${target.text}" -> ${newStatus}`);
+  };
+
+  // Handler to delete a reminder
+  const removeReminder = async (id) => {
+    if (String(id).startsWith("rem-fallback-")) {
+      setReminders(prev => prev.filter(rem => rem.id !== id));
+      return;
+    }
+    await deleteReminder(id);
+    await fetchReminders();
+    addTimelineEvent('reminder', `Deleted reminder from scheduled buffer`);
   };
 
   // Helper to extract a reminder command from user query (Simple Natural Language Parser)
@@ -101,40 +249,224 @@ export function JarvisProvider({ children }) {
 
     setMessages(prev => [...prev, userMsg]);
     setIsThinking(true);
-    
-    // Check if the user is asking to schedule a reminder locally
-    const localReminder = parseReminderInPrompt(text);
+    addTimelineEvent('user', `Query submitted: "${text}"`);
+    setExecutionState('Analyzing Request');
 
-    // Call Backend API
-    const response = await sendChatMessage(text);
-    
-    setIsConnected(response.success);
-    setGpuLoad(response.data.gpu_load);
-    
-    // Update telemetry from backend response if provided
-    if (response.data.cpu_load !== null && response.success) {
-      setTelemetry({
-        cpuLoad: response.data.cpu_load,
-        ramLoad: response.data.ram_load,
-        diskLoad: response.data.disk_load,
-        temperature: response.data.temperature,
-        syncActive: response.data.sync_active
+    const localReminder = parseReminderInPrompt(text);
+    let sseSuccess = false;
+    let finalPayload = null;
+
+    try {
+      // 1. Try SSE Stream Endpoint
+      const response = await fetch('http://localhost:8001/api/chat/stream', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          prompt: text,
+          user_id: 'user_01',
+          session_id: 'default_session'
+        }),
       });
+
+      if (response.ok && response.body) {
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder('utf-8');
+        let buffer = '';
+        sseSuccess = true;
+
+        while (true) {
+          const { value, done } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop(); // keep last incomplete line
+
+          for (const line of lines) {
+            if (line.startsWith('data: ')) {
+              const dataStr = line.slice(6).trim();
+              if (dataStr) {
+                try {
+                  const event = JSON.parse(dataStr);
+                  
+                  // Map event type to executionState
+                  switch (event.event_type) {
+                    case 'THINKING':
+                    case 'INTENT_DETECTED':
+                      setExecutionState('Analyzing Request');
+                      break;
+                    case 'ROUTING':
+                      setExecutionState('Routing Intent');
+                      if (event.payload && event.payload.data && event.payload.data.route) {
+                        addTimelineEvent('system', `Routing intent resolved: [${event.payload.data.route}]`);
+                      }
+                      break;
+                    case 'TOOL_START':
+                      setExecutionState('Running Tools');
+                      if (event.payload && event.payload.data && event.payload.data.tool) {
+                        addTimelineEvent('system', `Invoking tool: ${event.payload.data.tool}`);
+                      }
+                      break;
+                    case 'TOOL_COMPLETE':
+                      addTimelineEvent('diagnostics', `Tool execution complete.`);
+                      break;
+                    case 'MEMORY_STORE':
+                      setExecutionState('Running Tools');
+                      addTimelineEvent('memory', 'Initiating memory storage transaction...');
+                      break;
+                    case 'MEMORY_STORED':
+                      addTimelineEvent('memory', 'Stored new fact in neural memory');
+                      break;
+                    case 'MEMORY_RECALL':
+                      setExecutionState('Running Tools');
+                      addTimelineEvent('memory', 'Searching semantic memory...');
+                      break;
+                    case 'MEMORY_RECALLED':
+                      addTimelineEvent('memory', 'Retrieved memory matching query semantic context');
+                      break;
+                    case 'REMINDER_CREATE':
+                      setExecutionState('Running Tools');
+                      addTimelineEvent('reminder', 'Scheduling temporal reminder...');
+                      break;
+                    case 'REMINDER_CREATED':
+                      addTimelineEvent('reminder', 'Parsed and saved scheduled reminder');
+                      break;
+                    case 'RESPONSE_SYNTHESIS':
+                      setExecutionState('Synthesizing Response');
+                      break;
+                    case 'COMPLETE':
+                      setExecutionState('Completed');
+                      if (event.payload && event.payload.data) {
+                        finalPayload = event.payload.data;
+                      }
+                      break;
+                    default:
+                      break;
+                  }
+                } catch (e) {
+                  console.error("Failed to parse SSE line JSON:", e);
+                }
+              }
+            }
+          }
+        }
+      }
+    } catch (sseErr) {
+      console.warn("SSE stream connection failed or not supported. Falling back to HTTP POST /api/chat. Error:", sseErr);
+      sseSuccess = false;
     }
 
-    const jarvisMsg = {
-      id: `msg-${Date.now() + 1}`,
-      sender: 'jarvis',
-      text: response.data.message,
-      timestamp: new Date()
-    };
+    // 2. Fallback to standard HTTP POST if SSE failed or didn't yield a payload
+    if (!sseSuccess || !finalPayload) {
+      // Simulate progress steps since we are in sync fallback mode
+      setExecutionState('Analyzing Request');
+      const t1 = setTimeout(() => setExecutionState('Routing Intent'), 400);
+      const t2 = setTimeout(() => setExecutionState('Running Tools'), 1000);
+      const t3 = setTimeout(() => setExecutionState('Synthesizing Response'), 1800);
 
-    setMessages(prev => [...prev, jarvisMsg]);
-    setIsThinking(false);
+      try {
+        const response = await sendChatMessage(text);
+        
+        clearTimeout(t1);
+        clearTimeout(t2);
+        clearTimeout(t3);
+        setExecutionState('Completed');
 
-    // Trigger local reminder creation if parsed
-    if (localReminder) {
-      addReminder(localReminder.text, localReminder.time);
+        setIsConnected(response.success);
+        if (response.success) {
+          finalPayload = response.data;
+          
+          if (finalPayload.cpu_load !== null) {
+            addTimelineEvent('diagnostics', `System metrics polled: CPU ${finalPayload.cpu_load}%, RAM ${finalPayload.ram_load}%`);
+          }
+          if (finalPayload.route) {
+            addTimelineEvent('system', `Routing intent resolved: [${finalPayload.route}]`);
+            if (finalPayload.route === 'MEMORY_STORE') {
+              addTimelineEvent('memory', 'Stored new fact in neural memory');
+            } else if (finalPayload.route === 'MEMORY_RECALL') {
+              addTimelineEvent('memory', 'Retrieved memory matching query semantic context');
+            } else if (finalPayload.route === 'REMINDER') {
+              addTimelineEvent('reminder', 'Parsed and saved scheduled reminder');
+            }
+          }
+        } else {
+          finalPayload = {
+            message: response.data.message || 'Operation failed.',
+            gpu_load: 5,
+            cpu_load: 0,
+            ram_load: 0,
+            disk_load: 0,
+            temperature: 0,
+            sync_active: false,
+            route: 'CHAT'
+          };
+        }
+      } catch (postErr) {
+        console.error("Fallback POST chat endpoint also failed:", postErr);
+        clearTimeout(t1);
+        clearTimeout(t2);
+        clearTimeout(t3);
+        setExecutionState('Completed');
+        
+        finalPayload = {
+          message: `[CONNECTION ERROR] Both streaming and fallback endpoints failed: ${postErr.message}`,
+          gpu_load: 5,
+          cpu_load: 0,
+          ram_load: 0,
+          disk_load: 0,
+          temperature: 0,
+          sync_active: false,
+          route: 'CHAT'
+        };
+      }
+    }
+
+    // 3. Process the final response payload (from either SSE or Fallback POST)
+    if (finalPayload) {
+      setIsConnected(finalPayload.sync_active !== undefined ? finalPayload.sync_active : true);
+      setGpuLoad(finalPayload.gpu_load !== undefined ? finalPayload.gpu_load : (finalPayload.gpuLoad || 10));
+      
+      const cpu = finalPayload.cpu_load !== undefined ? finalPayload.cpu_load : finalPayload.cpuLoad;
+      if (cpu !== null && cpu !== undefined) {
+        setTelemetry({
+          cpuLoad: cpu,
+          ramLoad: finalPayload.ram_load !== undefined ? finalPayload.ram_load : finalPayload.ramLoad,
+          diskLoad: finalPayload.disk_load !== undefined ? finalPayload.disk_load : finalPayload.diskLoad,
+          temperature: finalPayload.temperature || 45,
+          syncActive: finalPayload.sync_active !== undefined ? finalPayload.sync_active : true
+        });
+      }
+
+      const jarvisMsg = {
+        id: `msg-${Date.now() + 1}`,
+        sender: 'jarvis',
+        text: finalPayload.message || 'JARVIS online.',
+        timestamp: new Date()
+      };
+
+      setMessages(prev => [...prev, jarvisMsg]);
+      setIsThinking(false);
+
+      // Refresh DB files
+      await fetchReminders();
+      await fetchMemories();
+    }
+
+    // Reset execution state to Idle after 2 seconds
+    setTimeout(() => setExecutionState('Idle'), 2000);
+
+    // Trigger local reminder creation only if backend call failed (offline override mode)
+    if ((!sseSuccess && !isConnected) && localReminder) {
+      const newRem = {
+        id: `rem-fallback-${Date.now()}`,
+        text: localReminder.text,
+        time: localReminder.time,
+        completed: false
+      };
+      setReminders(prev => [...prev, newRem]);
+      addTimelineEvent('reminder', `Local offline fallback reminder queued: "${localReminder.text}"`);
     }
   };
 
@@ -147,19 +479,28 @@ export function JarvisProvider({ children }) {
         timestamp: new Date()
       }
     ]);
+    addTimelineEvent('system', 'Terminal chat logs cleared.');
   };
 
   return (
     <JarvisContext.Provider value={{
       messages,
       isThinking,
+      executionState,
       gpuLoad,
       telemetry,
       reminders,
+      memories,
+      dueReminders,
+      timelineEvents,
       isConnected,
       sendMessage,
       addReminder,
       toggleReminder,
+      removeReminder,
+      removeMemory,
+      setDueReminders,
+      addTimelineEvent,
       clearChat
     }}>
       {children}

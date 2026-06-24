@@ -1,11 +1,24 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useJarvis } from '../context/JarvisContext';
-import { Send, Eye, ShieldAlert, Cpu, Trash2 } from 'lucide-react';
+import { Send, Eye, ShieldAlert, Cpu, Trash2, Bell } from 'lucide-react';
+import DemoPanel from './DemoPanel';
 
 export default function ChatInterface() {
-  const { messages, isThinking, sendMessage, clearChat, isConnected } = useJarvis();
+  const { 
+    messages, 
+    isThinking, 
+    executionState, 
+    sendMessage, 
+    clearChat, 
+    isConnected,
+    dueReminders,
+    setDueReminders,
+    toggleReminder
+  } = useJarvis();
   const [input, setInput] = useState('');
   const messagesEndRef = useRef(null);
+
+  const stages = ['Analyzing Request', 'Routing Intent', 'Running Tools', 'Synthesizing Response', 'Completed'];
 
   // Auto-scroll to bottom
   const scrollToBottom = () => {
@@ -14,7 +27,7 @@ export default function ChatInterface() {
 
   useEffect(() => {
     scrollToBottom();
-  }, [messages, isThinking]);
+  }, [messages, isThinking, executionState]);
 
   const handleSend = (e) => {
     e.preventDefault();
@@ -46,7 +59,8 @@ export default function ChatInterface() {
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'center',
-        background: 'rgba(10, 14, 24, 0.4)'
+        background: 'rgba(10, 14, 24, 0.4)',
+        flexShrink: 0
       }}>
         <div>
           <h1 style={{
@@ -86,6 +100,26 @@ export default function ChatInterface() {
 
         {/* Action Buttons */}
         <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+          {/* Due reminders count badge */}
+          {dueReminders.length > 0 && (
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px',
+              color: 'var(--accent-orange)',
+              border: '1px solid rgba(255, 107, 53, 0.4)',
+              padding: '3px 8px',
+              borderRadius: '10px',
+              fontSize: '10px',
+              fontFamily: 'var(--font-mono)',
+              background: 'rgba(255, 107, 53, 0.08)',
+              animation: 'pulse-pink 2s infinite'
+            }}>
+              <Bell size={10} style={{ fill: 'var(--accent-orange)' }} />
+              <span>{dueReminders.length} ALERT</span>
+            </div>
+          )}
+
           {/* Connection status */}
           <div style={{
             display: 'flex',
@@ -96,7 +130,7 @@ export default function ChatInterface() {
             fontFamily: 'var(--font-mono)',
             color: isConnected ? 'var(--accent-green)' : 'var(--accent-pink)',
             border: `1px solid ${isConnected ? 'var(--accent-green)40' : 'var(--accent-pink)40'}`,
-            padding: '2px 8px',
+            padding: '3px 8px',
             borderRadius: '10px',
             background: isConnected ? 'rgba(0, 255, 159, 0.02)' : 'rgba(255, 0, 128, 0.02)'
           }}>
@@ -138,6 +172,95 @@ export default function ChatInterface() {
           </button>
         </div>
       </div>
+
+      <DemoPanel />
+
+      {/* Due Reminder Alert Banner Area */}
+      {dueReminders.length > 0 && (
+        <div className="cyber-panel" style={{
+          background: 'rgba(255, 107, 53, 0.08)',
+          borderLeft: '3px solid var(--accent-orange)',
+          borderBottom: '1px solid rgba(255, 107, 53, 0.2)',
+          padding: '12px 24px',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '8px',
+          flexShrink: 0
+        }}>
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            color: 'var(--accent-orange)',
+            fontFamily: 'var(--font-nav)',
+            fontSize: '12px',
+            fontWeight: 'bold',
+            letterSpacing: '1px'
+          }}>
+            <ShieldAlert size={14} />
+            <span>TEMPORAL ALERTS IN BUFFER DETECTED</span>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+            {dueReminders.map(rem => (
+              <div 
+                key={rem.id} 
+                style={{
+                  display: 'flex', 
+                  justifyContent: 'space-between', 
+                  alignItems: 'center', 
+                  fontSize: '11px', 
+                  background: 'rgba(0, 0, 0, 0.3)', 
+                  padding: '6px 12px', 
+                  borderRadius: '4px', 
+                  border: '1px solid rgba(255, 107, 53, 0.15)' 
+                }}
+              >
+                <span style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-body)' }}>
+                  {rem.title} (Time: {rem.time})
+                </span>
+                <div style={{ display: 'flex', gap: '6px' }}>
+                  <button 
+                    onClick={async () => {
+                      await toggleReminder(rem.id);
+                      setDueReminders(prev => prev.filter(r => r.id !== rem.id));
+                    }}
+                    style={{
+                      background: 'var(--accent-orange)',
+                      color: '#000',
+                      border: 'none',
+                      borderRadius: '2px',
+                      padding: '2px 8px',
+                      fontSize: '9px',
+                      fontFamily: 'var(--font-nav)',
+                      fontWeight: 'bold',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    RESOLVE
+                  </button>
+                  <button 
+                    onClick={() => {
+                      setDueReminders(prev => prev.filter(r => r.id !== rem.id));
+                    }}
+                    style={{
+                      background: 'none',
+                      border: '1px solid rgba(255, 255, 255, 0.15)',
+                      color: 'var(--text-secondary)',
+                      borderRadius: '2px',
+                      padding: '2px 8px',
+                      fontSize: '9px',
+                      fontFamily: 'var(--font-nav)',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    DISMISS
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Messages Scroll Area */}
       <div style={{
@@ -182,7 +305,6 @@ export default function ChatInterface() {
                   lineHeight: '1.5',
                   color: 'var(--text-primary)',
                   letterSpacing: '0.2px',
-                  boxShadow: isJarvis ? 'none' : 'none',
                   whiteSpace: 'pre-wrap'
                 }}
               >
@@ -192,13 +314,15 @@ export default function ChatInterface() {
           );
         })}
 
-        {/* Thinking Indicator */}
+        {/* Real-time Agent Execution Stepper Progress Indicator */}
         {isThinking && (
           <div style={{
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'flex-start',
             alignSelf: 'flex-start',
+            width: '100%',
+            maxWidth: '480px'
           }}>
             <span style={{
               fontFamily: 'var(--font-mono)',
@@ -207,27 +331,86 @@ export default function ChatInterface() {
               marginBottom: '4px',
               letterSpacing: '1px'
             }}>
-              🤖 JARVIS // EVAL_CYCLE
+              🤖 JARVIS // ENGINE_PIPELINE
             </span>
-            <div className="cyber-panel thinking-pulse" style={{
-              padding: '12px 16px',
+            <div className={`cyber-panel ${executionState === 'Running Tools' || executionState === 'Synthesizing Response' ? 'pink-pulse' : 'thinking-pulse'}`} style={{
+              padding: '16px',
               borderRadius: '4px',
-              fontSize: '13px',
-              color: 'var(--accent-cyan)',
+              width: '100%',
               display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              fontWeight: '500'
+              flexDirection: 'column',
+              gap: '12px'
             }}>
-              <span style={{
-                width: '6px',
-                height: '6px',
-                borderRadius: '50%',
-                backgroundColor: 'var(--accent-cyan)',
-                boxShadow: '0 0 10px var(--accent-cyan)',
-                animation: 'pulse-cyan 1s infinite'
-              }} />
-              <span>ROUTING GRAPH STATE... RE-ACT EVALUATION IN PROGRESS</span>
+              {/* Active state text */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: 'var(--accent-cyan)', fontWeight: 'bold', fontFamily: 'var(--font-mono)' }}>
+                <span className="flicker" style={{
+                  width: '6px',
+                  height: '6px',
+                  borderRadius: '50%',
+                  backgroundColor: 'var(--accent-cyan)',
+                  boxShadow: 'var(--glow-cyan)'
+                }} />
+                <span>{executionState.toUpperCase()}...</span>
+              </div>
+
+              {/* Pipeline Nodes */}
+              <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                position: 'relative',
+                marginTop: '4px'
+              }}>
+                {stages.map((stage, idx) => {
+                  const stageIndex = stages.indexOf(executionState);
+                  const isActive = stage === executionState;
+                  const isCompleted = stages.indexOf(stage) < stageIndex;
+
+                  let nodeColor = 'rgba(255, 255, 255, 0.1)';
+                  let textColor = 'var(--text-dark)';
+                  let glow = 'none';
+
+                  if (isActive) {
+                    nodeColor = 'var(--accent-cyan)';
+                    textColor = 'var(--accent-cyan)';
+                    glow = 'var(--glow-cyan)';
+                  } else if (isCompleted) {
+                    nodeColor = 'var(--accent-green)';
+                    textColor = 'var(--accent-green)';
+                    glow = 'var(--glow-green)';
+                  }
+
+                  return (
+                    <div key={idx} style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      flex: 1,
+                      position: 'relative'
+                    }}>
+                      <div style={{
+                        width: '8px',
+                        height: '8px',
+                        borderRadius: '50%',
+                        backgroundColor: nodeColor,
+                        boxShadow: glow,
+                        transition: 'all 0.3s ease',
+                        zIndex: 2
+                      }} />
+                      <span style={{
+                        fontSize: '8px',
+                        fontFamily: 'var(--font-mono)',
+                        color: textColor,
+                        marginTop: '6px',
+                        textAlign: 'center',
+                        transition: 'all 0.3s ease',
+                        textTransform: 'uppercase'
+                      }}>
+                        {stage.split(' ')[0]}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           </div>
         )}
@@ -239,6 +422,7 @@ export default function ChatInterface() {
         padding: '16px 24px',
         borderTop: '1px solid var(--border-muted)',
         background: 'rgba(5, 8, 16, 0.9)',
+        flexShrink: 0
       }}>
         {/* Quick Prompts */}
         {messages.length <= 1 && !isThinking && (

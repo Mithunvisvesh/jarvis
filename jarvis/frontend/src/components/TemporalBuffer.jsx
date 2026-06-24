@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { useJarvis } from '../context/JarvisContext';
-import { Calendar, Plus, Clock, CheckCircle2, Circle } from 'lucide-react';
+import { Calendar, Plus, Clock, CheckCircle2, Circle, Trash2 } from 'lucide-react';
 
 export default function TemporalBuffer() {
-  const { reminders, addReminder, toggleReminder } = useJarvis();
+  const { reminders, addReminder, toggleReminder, removeReminder } = useJarvis();
   const [showAddForm, setShowAddForm] = useState(false);
   const [text, setText] = useState('');
   const [time, setTime] = useState('');
@@ -192,15 +192,41 @@ export default function TemporalBuffer() {
                 </span>
               </div>
               <div style={{
-                fontSize: '10px',
-                fontFamily: 'var(--font-mono)',
-                color: rem.completed ? 'var(--text-dark)' : 'var(--accent-orange)',
                 display: 'flex',
                 alignItems: 'center',
-                gap: '4px'
+                gap: '8px'
               }}>
-                <Clock size={10} />
-                {rem.time}
+                <div style={{
+                  fontSize: '10px',
+                  fontFamily: 'var(--font-mono)',
+                  color: rem.completed ? 'var(--text-dark)' : 'var(--accent-orange)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px'
+                }}>
+                  <Clock size={10} />
+                  {rem.time}
+                </div>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    removeReminder(rem.id);
+                  }}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    color: rem.completed ? 'rgba(255, 255, 255, 0.2)' : 'var(--text-secondary)',
+                    cursor: 'pointer',
+                    padding: '2px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    transition: 'color 0.2s'
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.color = 'var(--accent-pink)'}
+                  onMouseLeave={(e) => e.currentTarget.style.color = rem.completed ? 'rgba(255, 255, 255, 0.2)' : 'var(--text-secondary)'}
+                >
+                  <Trash2 size={11} />
+                </button>
               </div>
             </div>
           ))
