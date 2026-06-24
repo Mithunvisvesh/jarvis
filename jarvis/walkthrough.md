@@ -213,3 +213,20 @@ We implemented distinct UI action blocks in the message threads to display concr
 - **State Capture**: Configured the global React provider context [JarvisContext.jsx](file:///d:/mithun_files/Personal/5-Day%20AI%20Agents%20Intensive%20Vibe%20Coding%20Course%20With%20Google/Capstone%20Project/jarvis/frontend/src/context/JarvisContext.jsx) to preserve `action_taken` metadata in message states.
 - **UI Bubble Cards**: Styled a dedicated monospaced `SYSTEM ACTION EXECUTED` card inside the message bubbles in [ChatInterface.jsx](file:///d:/mithun_files/Personal/5-Day%20AI%20Agents%20Intensive%20Vibe%20Coding%20Course%20With%20Google/Capstone%20Project/jarvis/frontend/src/components/ChatInterface.jsx) featuring a dark background, custom padding, and a `--accent-cyan` left border.
 
+---
+
+## 🛠️ Day 6: Prompt Engineering & Tone Standardization
+
+### 1. Task 6.1 — Rewrite the UIFrontendAgent System Prompt
+We shifted the generative tone of the synthesis agent from a system logger to a high-end cognitive assistant:
+- **Stylistic Directives**: Extended the instructions in `UIFrontendAgent.system_prompt` inside [a2a_agents.py](file:///d:/mithun_files/Personal/5-Day%20AI%20Agents%20Intensive%20Vibe%20Coding%20Course%20With%20Google/Capstone%20Project/jarvis/app/a2a_agents.py) to explicitly assert JARVIS's identity, ban third-person machine-speak (e.g. "Operational reminder parsed"), and mandate a calm, conversational tone.
+- **Few-Shot Injector**: Added 3 distinct few-shot transition examples (Bad/robotic vs Good/conversational) inside the system instructions to enforce clean output formatting.
+- **Conversational Fallbacks**: Updated all hardcoded string formatting fallback pathways (used when Gemini calls are blocked by sandboxed environments/403s) to use natural conversational phrases.
+- **Test Integrity**: Updated assertions in [test_memory_workflow.py](file:///d:/mithun_files/Personal/5-Day%20AI%20Agents%20Intensive%20Vibe%20Coding%20Course%20With%20Google/Capstone%20Project/jarvis/tests/integration/test_memory_workflow.py) and [test_reminder_workflow.py](file:///d:/mithun_files/Personal/5-Day%20AI%20Agents%20Intensive%20Vibe%20Coding%20Course%20With%20Google/Capstone%20Project/jarvis/tests/integration/test_reminder_workflow.py) to accept the conversational patterns while remaining backwards compatible.
+
+### 2. Task 6.2 — Proactive Next Step Protocol
+We forced the LLM to transition from a reactive state to an active, helpful collaborator:
+- **Anticipatory Suggestions**: Updated the prompt guidelines in [a2a_agents.py](file:///d:/mithun_files/Personal/5-Day%20AI%20Agents%20Intensive%20Vibe%20Coding%20Course%20With%20Google/Capstone%20Project/jarvis/app/a2a_agents.py) to mandate concluding complex queries or completed tasks with a single, highly relevant, and brief (one-sentence) proactive suggestion/follow-up question.
+- **Conversational Fallbacks Integration**: Incorporated proactive follow-up suggestions directly into the local conversational backup fallbacks (e.g. asking to set recurring daily alerts on reminders or monitoring CPU spikes on diagnostics).
+
+

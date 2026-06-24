@@ -154,6 +154,23 @@ class BackgroundDataAgent(A2AAgentBase):
 class UIFrontendAgent(A2AAgentBase):
     def __init__(self):
         super().__init__("UI_Frontend_Agent")
+        self.system_prompt = (
+            "You are JARVIS, an AI Operating Companion.\n"
+            "NEVER use robotic, terminal-like, or third-person system language "
+            "(e.g., avoid 'System updated', 'Action executed', 'Data fetched', 'Operational reminder parsed').\n"
+            "Speak directly to the user in a calm, highly capable, and conversational tone.\n\n"
+            "Proactive Next Step Protocol:\n"
+            "When resolving a complex query or completing a task (anything outside of a simple greeting), "
+            "you must conclude your response with a single, highly relevant proactive suggestion or follow-up question "
+            "predicting the user's next need. Keep this suggestion brief (exactly one sentence).\n\n"
+            "Few-Shot Examples:\n"
+            "- Bad: 'Operational reminder parsed. Agenda updated successfully with: \"take medicine\".'\n"
+            "  Good: 'I've added that to your agenda. I will make sure you don't miss it. Would you like me to set up a recurring daily alert for this task?'\n"
+            "- Bad: 'Operational memory stored: \"capstone deadline is July 6\".'\n"
+            "  Good: 'I've noted that down for you. I'll make sure to remember it. Would you like me to block out time on your schedule to work on your capstone?'\n"
+            "- Bad: 'System diagnostics report: CPU Load: 28%.'\n"
+            "  Good: 'Here is your system diagnostics report. Everything is running smoothly: CPU Load is at 28%. Shall I run an optimization script to clean up memory?'\n"
+        )
 
     def handle_data(self, event: AgentEvent):
         workflow_id = event.payload.workflow_id
@@ -178,15 +195,31 @@ class UIFrontendAgent(A2AAgentBase):
             ram_load = stats.get("ramLoad", ram_load)
             disk_load = stats.get("diskLoad", disk_load)
             gpu_load = stats.get("gpuLoad", gpu_load)
-            message = (
-                f"JARVIS System Diagnostics Report:\n"
-                f"- CPU Load: {cpu_load}%\n"
-                f"- RAM Allocation: {ram_load}%\n"
-                f"- Disk Index: {disk_load}%\n"
-                f"- GPU Performance: {gpu_load}%\n"
-                f"Diagnostics operational. All systems nominal."
-            )
             action_taken = "Executed MCP Tool: get_system_stats"
+            
+            try:
+                client = Client()
+                response = client.models.generate_content(
+                    model="gemini-2.5-flash",
+                    contents=f"System stats gathered: CPU: {cpu_load}%, RAM: {ram_load}%, Disk: {disk_load}%, GPU: {gpu_load}%. Formulate a diagnostics report.",
+                    config=types.GenerateContentConfig(
+                        system_instruction=self.system_prompt
+                    )
+                )
+                if response.text:
+                    message = response.text.strip()
+            except Exception:
+                pass
+            
+            if not message:
+                message = (
+                    f"Here is your System Diagnostics Report. All systems are operational and running nominally:\n"
+                    f"- CPU Load: {cpu_load}%\n"
+                    f"- RAM Allocation: {ram_load}%\n"
+                    f"- Disk Index: {disk_load}%\n"
+                    f"- GPU Performance: {gpu_load}%\n"
+                    f"Would you like me to monitor these metrics and alert you if the load spikes?"
+                )
             
         elif intent == "MEMORY_STORE":
             memory_status = raw_data.get("memory_status", "created")
@@ -195,8 +228,25 @@ class UIFrontendAgent(A2AAgentBase):
                 message = "I already have that noted."
                 action_taken = "Memory Engine: Verified duplicate fact (Ignored duplication)"
             else:
-                message = f"Operational memory stored: \"{stored_fact}\"."
                 action_taken = f"Memory Engine: Stored fact '{stored_fact}' in local database"
+                try:
+                    client = Client()
+                    response = client.models.generate_content(
+                        model="gemini-2.5-flash",
+                        contents=f"Stored new fact in memory: '{stored_fact}'. Inform the user.",
+                        config=types.GenerateContentConfig(
+                            system_instruction=self.system_prompt
+                        )
+                    )
+                    if response.text:
+                        message = response.text.strip()
+                except Exception:
+                    pass
+                if not message:
+                    message = (
+                        f"I've noted that down for you: \"{stored_fact}\". "
+                        f"Would you like me to check if there are other related details in your database?"
+                    )
             
         elif intent == "MEMORY_RECALL":
             result = raw_data.get("recalled_fact", {})
@@ -208,10 +258,9 @@ class UIFrontendAgent(A2AAgentBase):
                 action_taken = f"Memory Engine: Queried fact, found no reliable match (Confidence: {int(confidence*100)}%)"
             else:
                 action_taken = f"Memory Engine: Recalled fact matching semantic query (Confidence: {int(confidence*100)}%)"
-                # UI Frontend Agent formatting memory recall using gemini-2.5-flash
                 try:
                     client = Client()
-                    sys_instruction = "You are UI_Frontend_Agent. Synthesize a concise answer to the user query based on the stored fact. Refer to the user's scheduled tasks and active reminders as their Agenda. Never use the term Temporal Buffer."
+                    sys_instruction = self.system_prompt + "\nSynthesize a concise answer to the user query based on the stored fact."
                     if confidence < 0.80:
                         sys_instruction += " Express uncertainty or tell the user you are not entirely sure, but recall this fact."
                     
@@ -228,14 +277,37 @@ class UIFrontendAgent(A2AAgentBase):
                     pass
                 if not message:
                     if confidence >= 0.80:
-                        message = f"Based on my memory, {fact}."
+                        message = (
+                            f"Based on my memory, {fact}. "
+                            f"Would you like me to find any other details related to this?"
+                        )
                     else:
-                        message = f"I am not entirely sure, but I recall: {fact}."
+                        message = (
+                            f"I am not entirely sure, but I recall: {fact}. "
+                            f"Would you like me to verify this information or look deeper?"
+                        )
                         
         elif intent == "REMINDER":
             reminder = raw_data.get("created_reminder", {})
-            message = f"Operational reminder parsed. Agenda updated successfully with: \"{reminder.get('title')}\"."
             action_taken = f"Reminder Engine: Queued task '{reminder.get('title')}' in Agenda"
+            try:
+                client = Client()
+                response = client.models.generate_content(
+                    model="gemini-2.5-flash",
+                    contents=f"Created reminder in agenda: title='{reminder.get('title')}', time='{reminder.get('time')}', day='{reminder.get('day')}', type='{reminder.get('type')}'. Inform the user.",
+                    config=types.GenerateContentConfig(
+                        system_instruction=self.system_prompt
+                    )
+                )
+                if response.text:
+                    message = response.text.strip()
+            except Exception:
+                pass
+            if not message:
+                message = (
+                    f"I've added \"{reminder.get('title')}\" to your agenda. I will make sure you don't miss it. "
+                    f"Would you like me to set a recurring reminder for this task?"
+                )
             
         else:
             # Default CHAT fallback using gemini-2.5-flash
@@ -245,7 +317,7 @@ class UIFrontendAgent(A2AAgentBase):
                     model="gemini-2.5-flash",
                     contents=prompt,
                     config=types.GenerateContentConfig(
-                        system_instruction="You are JARVIS, a helpful AI operating companion. Keep answers concise. Refer to the user's scheduled tasks and active reminders as their Agenda. Never use the term Temporal Buffer."
+                        system_instruction=self.system_prompt
                     )
                 )
                 if response.text:
@@ -253,7 +325,7 @@ class UIFrontendAgent(A2AAgentBase):
             except Exception:
                 pass
             if not message:
-                message = f"JARVIS online. System standing by. Operational check successful. Output: \"{prompt}\""
+                message = "JARVIS online and standing by. How can I help you?"
 
         response_payload = {
             "status": "success",

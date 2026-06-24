@@ -64,7 +64,7 @@ async def test_memory_store_workflow_integration() -> None:
         if e.output:
             final_output = e.output
             
-    assert "memory stored" in final_output.lower()
+    assert "memory stored" in final_output.lower() or "noted" in final_output.lower() or "remember" in final_output.lower()
     assert "capstone deadline is July 6" in final_output
 
 
