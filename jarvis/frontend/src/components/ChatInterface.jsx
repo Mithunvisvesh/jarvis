@@ -11,7 +11,7 @@ function SystemStatus({ executionState, isConnected }) {
   if (!isConnected) {
     statusColor = 'var(--accent-pink)';
     glow = 'var(--glow-pink)';
-  } else if (executionState === 'Analyzing Request' || executionState === 'Running Tools') {
+  } else if (executionState === 'Analyzing Request' || executionState === 'Running System Tools') {
     statusColor = 'var(--accent-cyan)';
     glow = 'var(--glow-cyan)';
     animation = 'pulse-cyan 1.5s infinite ease-in-out';
@@ -71,6 +71,7 @@ export default function ChatInterface() {
   const [isListening, setIsListening] = useState(false);
   const recognitionRef = useRef(null);
   const latestInput = useRef('');
+  const transcribedTextRef = useRef('');
 
   useEffect(() => {
     latestInput.current = input;
@@ -81,11 +82,12 @@ export default function ChatInterface() {
     if (SpeechRecognition) {
       const recognition = new SpeechRecognition();
       recognition.continuous = false;
-      recognition.interimResults = true;
+      recognition.interimResults = false;
       recognition.lang = 'en-US';
 
       recognition.onstart = () => {
         setIsListening(true);
+        transcribedTextRef.current = '';
       };
 
       recognition.onresult = (event) => {
@@ -94,6 +96,7 @@ export default function ChatInterface() {
           .map(result => result.transcript)
           .join('');
         setInput(transcript);
+        transcribedTextRef.current = transcript;
       };
 
       recognition.onerror = (event) => {
@@ -103,9 +106,11 @@ export default function ChatInterface() {
 
       recognition.onend = () => {
         setIsListening(false);
-        if (latestInput.current.trim()) {
-          sendMessage(latestInput.current.trim());
+        const finalVal = transcribedTextRef.current || latestInput.current;
+        if (finalVal.trim()) {
+          sendMessage(finalVal.trim());
           setInput('');
+          transcribedTextRef.current = '';
         }
       };
 
@@ -127,7 +132,7 @@ export default function ChatInterface() {
     }
   };
 
-  const stages = ['Analyzing Request', 'Routing Intent', 'Running Tools', 'Synthesizing Response', 'Completed'];
+  const stages = ['Analyzing Request', 'Routing Intent', 'Running System Tools', 'Synthesizing Response', 'Completed'];
 
   // Auto-scroll to bottom
   const scrollToBottom = () => {
@@ -271,7 +276,10 @@ export default function ChatInterface() {
           </button>
 
           <button 
-            onClick={() => resetConversation()}
+            onClick={() => {
+              resetConversation();
+              setInput('');
+            }}
             title="Reset Conversation (Clear Local Storage & Backend Context)"
             style={{
               background: 'none',
@@ -484,7 +492,7 @@ export default function ChatInterface() {
             }}>
               🤖 JARVIS // ENGINE_PIPELINE
             </span>
-            <div className={`cyber-panel ${executionState === 'Running Tools' || executionState === 'Synthesizing Response' ? 'pink-pulse' : 'thinking-pulse'}`} style={{
+            <div className={`cyber-panel ${executionState === 'Running System Tools' || executionState === 'Synthesizing Response' ? 'pink-pulse' : 'thinking-pulse'}`} style={{
               padding: '16px',
               borderRadius: '4px',
               width: '100%',

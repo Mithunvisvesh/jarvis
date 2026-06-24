@@ -164,6 +164,40 @@ export function JarvisProvider({ children }) {
     return () => clearInterval(timer);
   }, [isThinking]);
 
+  const playNotificationSound = () => {
+    try {
+      const AudioContext = window.AudioContext || window.webkitAudioContext;
+      if (!AudioContext) return;
+      const ctx = new AudioContext();
+
+      // First beep
+      const osc1 = ctx.createOscillator();
+      const gain1 = ctx.createGain();
+      osc1.type = 'sine';
+      osc1.frequency.setValueAtTime(880, ctx.currentTime);
+      gain1.gain.setValueAtTime(0.05, ctx.currentTime);
+      gain1.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.15);
+      osc1.connect(gain1);
+      gain1.connect(ctx.destination);
+      osc1.start(ctx.currentTime);
+      osc1.stop(ctx.currentTime + 0.15);
+
+      // Second beep (slightly higher pitch, slightly delayed)
+      const osc2 = ctx.createOscillator();
+      const gain2 = ctx.createGain();
+      osc2.type = 'sine';
+      osc2.frequency.setValueAtTime(1200, ctx.currentTime + 0.1);
+      gain2.gain.setValueAtTime(0.05, ctx.currentTime + 0.1);
+      gain2.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.25);
+      osc2.connect(gain2);
+      gain2.connect(ctx.destination);
+      osc2.start(ctx.currentTime + 0.1);
+      osc2.stop(ctx.currentTime + 0.25);
+    } catch (e) {
+      console.warn("Failed to play notification sound:", e);
+    }
+  };
+
   // Periodic Polling for Due Reminders
   useEffect(() => {
     const checkDueReminders = async () => {
@@ -177,6 +211,7 @@ export function JarvisProvider({ children }) {
               newDue.forEach(item => {
                 addTimelineEvent('reminder', `REMINDER DUE: "${item.title}"`);
               });
+              playNotificationSound();
               return [...prev, ...newDue];
             }
             return prev;
@@ -338,7 +373,7 @@ export function JarvisProvider({ children }) {
                       }
                       break;
                     case 'TOOL_START':
-                      setExecutionState('Running Tools');
+                      setExecutionState('Running System Tools');
                       if (event.payload && event.payload.data && event.payload.data.tool) {
                         addTimelineEvent('system', `Invoking tool: ${event.payload.data.tool}`);
                       }
@@ -347,21 +382,21 @@ export function JarvisProvider({ children }) {
                       addTimelineEvent('diagnostics', `Tool execution complete.`);
                       break;
                     case 'MEMORY_STORE':
-                      setExecutionState('Running Tools');
+                      setExecutionState('Running System Tools');
                       addTimelineEvent('memory', 'Initiating memory storage transaction...');
                       break;
                     case 'MEMORY_STORED':
                       addTimelineEvent('memory', 'Stored new fact in neural memory');
                       break;
                     case 'MEMORY_RECALL':
-                      setExecutionState('Running Tools');
+                      setExecutionState('Running System Tools');
                       addTimelineEvent('memory', 'Searching semantic memory...');
                       break;
                     case 'MEMORY_RECALLED':
                       addTimelineEvent('memory', 'Retrieved memory matching query semantic context');
                       break;
                     case 'REMINDER_CREATE':
-                      setExecutionState('Running Tools');
+                      setExecutionState('Running System Tools');
                       addTimelineEvent('reminder', 'Scheduling temporal reminder...');
                       break;
                     case 'REMINDER_CREATED':
@@ -421,7 +456,7 @@ export function JarvisProvider({ children }) {
       // Simulate progress steps since we are in sync fallback mode
       setExecutionState('Analyzing Request');
       const t1 = setTimeout(() => setExecutionState('Routing Intent'), 400);
-      const t2 = setTimeout(() => setExecutionState('Running Tools'), 1000);
+      const t2 = setTimeout(() => setExecutionState('Running System Tools'), 1000);
       const t3 = setTimeout(() => setExecutionState('Synthesizing Response'), 1800);
 
       try {
@@ -593,6 +628,8 @@ export function JarvisProvider({ children }) {
         timestamp: new Date()
       }
     ]);
+    setIsThinking(false);
+    setExecutionState('Idle');
     setCurrentRequestEvents([]);
     addTimelineEvent('system', 'Local chat cache and logs cleared.');
 

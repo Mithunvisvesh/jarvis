@@ -140,7 +140,7 @@ export default function DeveloperPanel() {
       return executionState === 'Analyzing Request' || executionState === 'Routing Intent';
     }
     if (nodeName === 'Background') {
-      return executionState === 'Running Tools';
+      return executionState === 'Running System Tools';
     }
     if (nodeName === 'UI') {
       return executionState === 'Synthesizing Response';
