@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useJarvis } from '../context/JarvisContext';
-import { Send, Eye, ShieldAlert, Cpu, Trash2, Bell } from 'lucide-react';
+import { Send, Eye, ShieldAlert, Cpu, Trash2, Bell, Code, Database } from 'lucide-react';
 import DemoPanel from './DemoPanel';
 
 export default function ChatInterface() {
@@ -13,7 +13,10 @@ export default function ChatInterface() {
     isConnected,
     dueReminders,
     setDueReminders,
-    toggleReminder
+    toggleReminder,
+    isDeveloperMode,
+    setIsDeveloperMode,
+    wipeSessionContext
   } = useJarvis();
   const [input, setInput] = useState('');
   const messagesEndRef = useRef(null);
@@ -162,18 +165,95 @@ export default function ChatInterface() {
           </div>
 
           <button 
-            onClick={clearChat}
-            title="RESET LOGGER"
+            onClick={() => setIsDeveloperMode(!isDeveloperMode)}
+            title={isDeveloperMode ? "Disable Developer Mode" : "Enable Developer Mode"}
             style={{
-              background: 'none',
-              border: '1px solid rgba(255, 255, 255, 0.1)',
-              color: 'var(--text-secondary)',
-              padding: '6px',
+              background: isDeveloperMode ? 'rgba(0, 212, 255, 0.1)' : 'none',
+              border: isDeveloperMode ? '1px solid var(--accent-cyan)' : '1px solid rgba(255, 255, 255, 0.1)',
+              color: isDeveloperMode ? 'var(--accent-cyan)' : 'var(--text-secondary)',
+              padding: '4px 8px',
               borderRadius: '4px',
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
+              gap: '6px',
+              fontSize: '10px',
+              fontFamily: 'var(--font-nav)',
+              fontWeight: 'bold',
+              transition: 'all 0.2s',
+              boxShadow: isDeveloperMode ? 'var(--glow-cyan)' : 'none'
+            }}
+            onMouseEnter={(e) => {
+              if (!isDeveloperMode) {
+                e.currentTarget.style.color = 'var(--accent-cyan)';
+                e.currentTarget.style.borderColor = 'var(--accent-cyan)';
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (!isDeveloperMode) {
+                e.currentTarget.style.color = 'var(--text-secondary)';
+                e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.1)';
+              }
+            }}
+          >
+            <Code size={12} />
+            <span>DEV</span>
+          </button>
+
+          {isDeveloperMode && (
+            <button 
+              onClick={() => wipeSessionContext()}
+              title="Wipe Session Context (Backend State)"
+              style={{
+                background: 'none',
+                border: '1px solid rgba(255, 0, 128, 0.3)',
+                color: 'var(--accent-pink)',
+                padding: '4px 8px',
+                borderRadius: '4px',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '6px',
+                fontSize: '10px',
+                fontFamily: 'var(--font-nav)',
+                fontWeight: 'bold',
+                transition: 'all 0.2s',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = 'rgba(255, 0, 128, 0.05)';
+                e.currentTarget.style.boxShadow = 'var(--glow-pink)';
+                e.currentTarget.style.borderColor = 'var(--accent-pink)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = 'transparent';
+                e.currentTarget.style.boxShadow = 'none';
+                e.currentTarget.style.borderColor = 'rgba(255, 0, 128, 0.3)';
+              }}
+            >
+              <Database size={12} />
+              <span>WIPE SESSION</span>
+            </button>
+          )}
+
+          <button 
+            onClick={clearChat}
+            title="Clear Chat View (Local UI)"
+            style={{
+              background: 'none',
+              border: '1px solid rgba(255, 255, 255, 0.1)',
+              color: 'var(--text-secondary)',
+              padding: '4px 8px',
+              borderRadius: '4px',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '6px',
+              fontSize: '10px',
+              fontFamily: 'var(--font-nav)',
+              fontWeight: 'bold',
               transition: 'all 0.2s'
             }}
             onMouseEnter={(e) => {
@@ -185,7 +265,8 @@ export default function ChatInterface() {
               e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.1)';
             }}
           >
-            <Trash2 size={14} />
+            <Trash2 size={12} />
+            <span>CLEAR CHAT</span>
           </button>
         </div>
       </div>

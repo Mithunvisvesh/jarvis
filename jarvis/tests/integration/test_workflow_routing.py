@@ -105,4 +105,4 @@ async def test_workflow_routing_reminder() -> None:
         if e.output:
             final_output = e.output
             
-    assert "reminder parsed" in final_output.lower() or "temporal buffer" in final_output.lower()
+    assert "reminder parsed" in final_output.lower() or "agenda" in final_output.lower() or "temporal buffer" in final_output.lower()

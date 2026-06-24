@@ -95,7 +95,7 @@ class BackgroundDataAgent(A2AAgentBase):
                     model="gemini-2.5-flash",
                     contents=prompt,
                     config=types.GenerateContentConfig(
-                        system_instruction="You are a fact extractor. Extract the main fact declared by the user as a clean single declarative sentence. Keep it concise."
+                        system_instruction="You are a fact extractor. Extract the main fact declared by the user as a clean single declarative sentence. Keep it concise. Refer to the user's scheduled tasks and active reminders as their Agenda. Never use the term Temporal Buffer."
                     )
                 )
                 if response.text:
@@ -205,7 +205,7 @@ class UIFrontendAgent(A2AAgentBase):
                 # UI Frontend Agent formatting memory recall using gemini-2.5-flash
                 try:
                     client = Client()
-                    sys_instruction = "You are UI_Frontend_Agent. Synthesize a concise answer to the user query based on the stored fact."
+                    sys_instruction = "You are UI_Frontend_Agent. Synthesize a concise answer to the user query based on the stored fact. Refer to the user's scheduled tasks and active reminders as their Agenda. Never use the term Temporal Buffer."
                     if confidence < 0.80:
                         sys_instruction += " Express uncertainty or tell the user you are not entirely sure, but recall this fact."
                     
@@ -228,7 +228,7 @@ class UIFrontendAgent(A2AAgentBase):
                         
         elif intent == "REMINDER":
             reminder = raw_data.get("created_reminder", {})
-            message = f"Operational reminder parsed. Temporal buffer updated successfully with: \"{reminder.get('title')}\"."
+            message = f"Operational reminder parsed. Agenda updated successfully with: \"{reminder.get('title')}\"."
             
         else:
             # Default CHAT fallback using gemini-2.5-flash
@@ -238,7 +238,7 @@ class UIFrontendAgent(A2AAgentBase):
                     model="gemini-2.5-flash",
                     contents=prompt,
                     config=types.GenerateContentConfig(
-                        system_instruction="You are JARVIS, a helpful AI operating companion. Keep answers concise."
+                        system_instruction="You are JARVIS, a helpful AI operating companion. Keep answers concise. Refer to the user's scheduled tasks and active reminders as their Agenda. Never use the term Temporal Buffer."
                     )
                 )
                 if response.text:

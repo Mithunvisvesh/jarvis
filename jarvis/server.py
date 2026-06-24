@@ -179,6 +179,35 @@ async def chat_endpoint(request: JarvisRequest, use_workflow: bool = Query(True)
 
     return validated_response
 
+class ResetRequest(BaseModel):
+    user_id: str = "default_user"
+    session_id: str = "default_session"
+
+@app.post("/api/chat/reset")
+async def reset_chat_endpoint(request: ResetRequest):
+    logger.info(f"Resetting session context for user: {request.user_id}, session: {request.session_id}")
+    try:
+        try:
+            await session_service.delete_session(
+                app_name=workflow_app.name,
+                user_id=request.user_id,
+                session_id=request.session_id
+            )
+        except Exception:
+            pass
+        try:
+            await session_service.delete_session(
+                app_name=adk_app.name,
+                user_id=request.user_id,
+                session_id=request.session_id
+            )
+        except Exception:
+            pass
+        return {"status": "success", "message": "Session context wiped successfully."}
+    except Exception as e:
+        logger.error(f"Error resetting session context: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 # --- STEP 3: GRAPH EVENT STREAMING ENDPOINT ---
 @app.post("/api/chat/stream")
 async def chat_stream_endpoint(request: JarvisRequest):

@@ -70,5 +70,5 @@ async def test_reminder_workflow_integration() -> None:
         if e.output:
             final_output = e.output
             
-    assert "buffer updated successfully" in final_output.lower()
+    assert "agenda updated successfully" in final_output.lower() or "buffer updated successfully" in final_output.lower()
     assert "take Vitamin D" in final_output

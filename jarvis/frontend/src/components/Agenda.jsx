@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useJarvis } from '../context/JarvisContext';
 import { Calendar, Plus, Clock, CheckCircle2, Circle, Trash2 } from 'lucide-react';
 
-export default function TemporalBuffer() {
+export default function Agenda() {
   const { reminders, addReminder, toggleReminder, removeReminder } = useJarvis();
   const [showAddForm, setShowAddForm] = useState(false);
   const [text, setText] = useState('');
@@ -43,7 +43,7 @@ export default function TemporalBuffer() {
           gap: '6px'
         }}>
           <Calendar size={14} />
-          TEMPORAL BUFFER
+          AGENDA
         </div>
         
         <button 
@@ -154,7 +154,7 @@ export default function TemporalBuffer() {
             fontStyle: 'italic',
             fontFamily: 'var(--font-mono)'
           }}>
-            BUFFER_EMPTY
+            AGENDA_EMPTY
           </div>
         ) : (
           reminders.map((rem) => (

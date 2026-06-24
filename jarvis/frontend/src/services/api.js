@@ -167,3 +167,23 @@ export async function getTraceDetail(workflowId) {
   }
 }
 
+export async function resetSessionContext(userId = 'user_01', sessionId = 'default_session') {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/chat/reset`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        user_id: userId,
+        session_id: sessionId
+      }),
+    });
+    if (!response.ok) throw new Error("Failed to reset session context");
+    return await response.json();
+  } catch (error) {
+    console.error(error);
+    return null;
+  }
+}
+

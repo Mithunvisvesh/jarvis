@@ -7,7 +7,8 @@ import {
   deleteReminder,
   getMemories,
   deleteMemory,
-  getDueReminders
+  getDueReminders,
+  resetSessionContext
 } from '../services/api';
 
 const JarvisContext = createContext(undefined);
@@ -22,6 +23,7 @@ export function JarvisProvider({ children }) {
     }
   ]);
   const [isThinking, setIsThinking] = useState(false);
+  const [isDeveloperMode, setIsDeveloperMode] = useState(false);
   const [executionState, setExecutionState] = useState('Idle');
   const [gpuLoad, setGpuLoad] = useState(10);
   const [isConnected, setIsConnected] = useState(true);
@@ -482,6 +484,19 @@ export function JarvisProvider({ children }) {
     addTimelineEvent('system', 'Terminal chat logs cleared.');
   };
 
+  const wipeSessionContext = async (userId = 'user_01', sessionId = 'default_session') => {
+    try {
+      const res = await resetSessionContext(userId, sessionId);
+      if (res && res.status === 'success') {
+        addTimelineEvent('system', 'Session context and working memory wiped on backend.');
+        return true;
+      }
+    } catch (err) {
+      console.error("Failed to wipe session context:", err);
+    }
+    return false;
+  };
+
   return (
     <JarvisContext.Provider value={{
       messages,
@@ -494,6 +509,8 @@ export function JarvisProvider({ children }) {
       dueReminders,
       timelineEvents,
       isConnected,
+      isDeveloperMode,
+      setIsDeveloperMode,
       sendMessage,
       addReminder,
       toggleReminder,
@@ -501,7 +518,8 @@ export function JarvisProvider({ children }) {
       removeMemory,
       setDueReminders,
       addTimelineEvent,
-      clearChat
+      clearChat,
+      wipeSessionContext
     }}>
       {children}
     </JarvisContext.Provider>
