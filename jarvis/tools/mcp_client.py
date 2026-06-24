@@ -23,11 +23,14 @@ def call_mcp_tool(tool_name: str, arguments: dict = None) -> dict:
         server_path = os.path.join(base_dir, "mcp_server.py")
         
         # Start mcp_server as a subprocess using stdio transport
+        project_root = os.path.dirname(base_dir)
         proc = subprocess.Popen(
             [py_exe, server_path],
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
+            env={**os.environ, "PYTHONPATH": project_root},
+            cwd=project_root,
             text=True
         )
         

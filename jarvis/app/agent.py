@@ -234,8 +234,6 @@ def ui_frontend_node(ctx, node_input) -> str:
     message = complete_data.get("message", "")
     return message
 
-    return message
-
 
 jarvis_core_workflow = Workflow(
     name="jarvis_core_workflow",
