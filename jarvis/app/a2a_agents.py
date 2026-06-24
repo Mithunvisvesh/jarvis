@@ -64,28 +64,9 @@ class OrchestratorAgent(A2AAgentBase):
         self.publish_event("ROUTING", workflow_id, request_id, {"route": intent, "message": f"Routing intent resolved: [{intent}]"})
         self.publish_event("INTENT_DETECTED", workflow_id, request_id, {"intent": intent, "prompt": prompt})
 
-class TelemetryAgent(A2AAgentBase):
+class BackgroundDataAgent(A2AAgentBase):
     def __init__(self):
-        super().__init__("telemetry_agent")
-
-    def handle_intent(self, event: AgentEvent):
-        if event.payload.data.get("intent") == "SYSTEM":
-            workflow_id = event.payload.workflow_id
-            request_id = event.payload.request_id
-            
-            self.publish_event("TOOL_START", workflow_id, request_id, {"tool": "get_system_stats", "message": "Invoking MCP get_system_stats..."})
-            
-            # Execute tool strictly via MCP client
-            try:
-                stats = call_mcp_tool("get_system_stats")
-                self.publish_event("TOOL_COMPLETE", workflow_id, request_id, {"tool": "get_system_stats", "stats": stats})
-                self.publish_event("TELEMETRY_GATHERED", workflow_id, request_id, {"stats": stats})
-            except Exception as e:
-                self.publish_event("TOOL_ERROR", workflow_id, request_id, {"tool": "get_system_stats", "error": str(e)})
-
-class MemoryAgent(A2AAgentBase):
-    def __init__(self):
-        super().__init__("memory_agent")
+        super().__init__("Background_Data_Agent")
 
     def handle_intent(self, event: AgentEvent):
         intent = event.payload.data.get("intent")
@@ -93,9 +74,20 @@ class MemoryAgent(A2AAgentBase):
         request_id = event.payload.request_id
         prompt = event.payload.data.get("prompt", "")
 
-        if intent == "MEMORY_STORE":
+        self.publish_event("THINKING", workflow_id, request_id, {"message": f"BackgroundDataAgent handling background tasks for intent [{intent}]..."})
+
+        raw_data = {}
+        if intent == "SYSTEM":
+            self.publish_event("TOOL_START", workflow_id, request_id, {"tool": "get_system_stats", "message": "Invoking MCP get_system_stats..."})
+            try:
+                stats = call_mcp_tool("get_system_stats")
+                self.publish_event("TOOL_COMPLETE", workflow_id, request_id, {"tool": "get_system_stats", "stats": stats})
+                raw_data["stats"] = stats
+            except Exception as e:
+                self.publish_event("TOOL_ERROR", workflow_id, request_id, {"tool": "get_system_stats", "error": str(e)})
+
+        elif intent == "MEMORY_STORE":
             self.publish_event("MEMORY_STORE", workflow_id, request_id, {"message": "Extracting and storing fact..."})
-            
             fact_text = ""
             try:
                 client = Client()
@@ -112,40 +104,28 @@ class MemoryAgent(A2AAgentBase):
                 pass
 
             if not fact_text:
-                # Local fallback extraction
                 from app.memory_agent import clean_fact_offline
                 fact_text = clean_fact_offline(prompt)
 
-            # Store fact strictly via MCP
             try:
-                call_mcp_tool("get_memories") # Verify MCP works
+                call_mcp_tool("get_memories")  # Verify MCP works
                 add_fact(fact_text)
                 self.publish_event("MEMORY_STORED", workflow_id, request_id, {"fact": fact_text})
+                raw_data["stored_fact"] = fact_text
             except Exception as e:
                 self.publish_event("MEMORY_ERROR", workflow_id, request_id, {"error": str(e)})
 
         elif intent == "MEMORY_RECALL":
             self.publish_event("MEMORY_RECALL", workflow_id, request_id, {"message": "Recalling semantic context..."})
-            
             try:
-                # Recall facts
                 result = recall_facts(prompt)
                 self.publish_event("MEMORY_RECALLED", workflow_id, request_id, {"result": result})
+                raw_data["recalled_fact"] = result
             except Exception as e:
                 self.publish_event("MEMORY_ERROR", workflow_id, request_id, {"error": str(e)})
 
-class ReminderAgent(A2AAgentBase):
-    def __init__(self):
-        super().__init__("reminder_agent")
-
-    def handle_intent(self, event: AgentEvent):
-        if event.payload.data.get("intent") == "REMINDER":
-            workflow_id = event.payload.workflow_id
-            request_id = event.payload.request_id
-            prompt = event.payload.data.get("prompt", "")
-
+        elif intent == "REMINDER":
             self.publish_event("REMINDER_CREATE", workflow_id, request_id, {"message": "Scheduling temporal reminder..."})
-            
             try:
                 parsed = parse_reminder(prompt)
                 rem = add_reminder(
@@ -155,68 +135,43 @@ class ReminderAgent(A2AAgentBase):
                     day=parsed["day"]
                 )
                 self.publish_event("REMINDER_CREATED", workflow_id, request_id, {"reminder": rem})
+                raw_data["created_reminder"] = rem
             except Exception as e:
                 self.publish_event("REMINDER_ERROR", workflow_id, request_id, {"error": str(e)})
 
-class UIAgent(A2AAgentBase):
+        # Delegate gathered data to UIFrontendAgent via Event Bus
+        self.publish_event("BACKGROUND_DATA_COMPLETE", workflow_id, request_id, {
+            "intent": intent,
+            "prompt": prompt,
+            "raw_data": raw_data
+        })
+
+class UIFrontendAgent(A2AAgentBase):
     def __init__(self):
-        super().__init__("ui_agent")
+        super().__init__("UI_Frontend_Agent")
 
-    def handle_event(self, event: AgentEvent):
-        # Handles interface animation triggers
-        pass
-
-class BackgroundAgent(A2AAgentBase):
-    def __init__(self):
-        super().__init__("background_agent")
-
-    def run_background_checks(self, workflow_id: str, request_id: str):
-        # Simulates checking for active triggers or due tasks in background
-        try:
-            due = call_mcp_tool("get_due_reminders")
-            if due:
-                self.publish_event("REMINDER_TRIGGER", workflow_id, request_id, {"due": due})
-        except Exception:
-            pass
-
-class ResponseSynthesizerAgent(A2AAgentBase):
-    def __init__(self):
-        super().__init__("synthesis_agent")
-        self.gathered_data: Dict[str, Any] = {}
-
-    def handle_response(self, event: AgentEvent):
+    def handle_data(self, event: AgentEvent):
         workflow_id = event.payload.workflow_id
         request_id = event.payload.request_id
-        
-        # Accumulate data
-        if event.event_type == "TELEMETRY_GATHERED":
-            self.gathered_data[workflow_id] = {"type": "telemetry", "stats": event.payload.data.get("stats")}
-        elif event.event_type == "MEMORY_STORED":
-            self.gathered_data[workflow_id] = {"type": "memory_store", "fact": event.payload.data.get("fact")}
-        elif event.event_type == "MEMORY_RECALLED":
-            self.gathered_data[workflow_id] = {"type": "memory_recall", "result": event.payload.data.get("result"), "prompt": event.payload.data.get("prompt")}
-        elif event.event_type == "REMINDER_CREATED":
-            self.gathered_data[workflow_id] = {"type": "reminder", "reminder": event.payload.data.get("reminder")}
+        intent = event.payload.data.get("intent")
+        prompt = event.payload.data.get("prompt")
+        raw_data = event.payload.data.get("raw_data", {})
 
-    def synthesize(self, workflow_id: str, request_id: str, original_prompt: str) -> Dict[str, Any]:
-        self.publish_event("RESPONSE_SYNTHESIS", workflow_id, request_id, {"message": "Synthesizing response..."})
-        
-        data_block = self.gathered_data.get(workflow_id, {"type": "chat"})
-        message = ""
-        route = "CHAT"
-        
+        self.publish_event("RESPONSE_SYNTHESIS", workflow_id, request_id, {"message": "Synthesizing UI response payload..."})
+
         cpu_load = 28
         ram_load = 54
         disk_load = 42
         gpu_load = 10
-        
-        if data_block["type"] == "telemetry":
-            stats = data_block["stats"]
+        message = ""
+        route = intent
+
+        if intent == "SYSTEM":
+            stats = raw_data.get("stats", {})
             cpu_load = stats.get("cpuLoad", cpu_load)
             ram_load = stats.get("ramLoad", ram_load)
             disk_load = stats.get("diskLoad", disk_load)
             gpu_load = stats.get("gpuLoad", gpu_load)
-            route = "SYSTEM"
             message = (
                 f"JARVIS System Diagnostics Report:\n"
                 f"- CPU Load: {cpu_load}%\n"
@@ -226,59 +181,53 @@ class ResponseSynthesizerAgent(A2AAgentBase):
                 f"Diagnostics operational. All systems nominal."
             )
             
-        elif data_block["type"] == "memory_store":
-            fact = data_block["fact"]
-            route = "MEMORY_STORE"
-            message = f"Operational memory stored: \"{fact}\"."
+        elif intent == "MEMORY_STORE":
+            stored_fact = raw_data.get("stored_fact", "")
+            message = f"Operational memory stored: \"{stored_fact}\"."
             
-        elif data_block["type"] == "memory_recall":
-            result = data_block["result"]
-            fact = result.get("fact")
-            confidence = result.get("confidence", 0.0)
-            route = "MEMORY_RECALL"
+        elif intent == "MEMORY_RECALL":
+            result = raw_data.get("recalled_fact", {})
+            fact = result.get("fact") if result else None
+            confidence = result.get("confidence", 0.0) if result else 0.0
             
             if confidence < 0.50 or not fact:
                 message = "I don't have a reliable memory for that."
-            elif confidence >= 0.80:
-                try:
-                    client = Client()
-                    response = client.models.generate_content(
-                        model="gemini-2.5-flash",
-                        contents=f"Answer the user query: '{original_prompt}' based on this stored fact: '{fact}'. Keep it concise.",
-                    )
-                    if response.text:
-                        message = response.text.strip()
-                except Exception:
-                    pass
-                if not message:
-                    message = f"Based on my memory, {fact}."
             else:
+                # UI Frontend Agent formatting memory recall using gemini-2.5-flash
                 try:
                     client = Client()
+                    sys_instruction = "You are UI_Frontend_Agent. Synthesize a concise answer to the user query based on the stored fact."
+                    if confidence < 0.80:
+                        sys_instruction += " Express uncertainty or tell the user you are not entirely sure, but recall this fact."
+                    
                     response = client.models.generate_content(
                         model="gemini-2.5-flash",
-                        contents=f"Answer the user query: '{original_prompt}' based on this stored fact: '{fact}'. Express uncertainty or tell the user you are not entirely sure, but recall this fact. Keep it concise.",
+                        contents=f"User Query: '{prompt}'. Stored Fact: '{fact}'.",
+                        config=types.GenerateContentConfig(
+                            system_instruction=sys_instruction
+                        )
                     )
                     if response.text:
                         message = response.text.strip()
                 except Exception:
                     pass
                 if not message:
-                    message = f"I am not entirely sure, but I recall: {fact}."
-                    
-        elif data_block["type"] == "reminder":
-            reminder = data_block["reminder"]
-            route = "REMINDER"
-            message = f"Operational reminder parsed. Temporal buffer updated successfully with: \"{reminder['title']}\"."
+                    if confidence >= 0.80:
+                        message = f"Based on my memory, {fact}."
+                    else:
+                        message = f"I am not entirely sure, but I recall: {fact}."
+                        
+        elif intent == "REMINDER":
+            reminder = raw_data.get("created_reminder", {})
+            message = f"Operational reminder parsed. Temporal buffer updated successfully with: \"{reminder.get('title')}\"."
             
         else:
-            # Default chat
-            route = "CHAT"
+            # Default CHAT fallback using gemini-2.5-flash
             try:
                 client = Client()
                 response = client.models.generate_content(
                     model="gemini-2.5-flash",
-                    contents=original_prompt,
+                    contents=prompt,
                     config=types.GenerateContentConfig(
                         system_instruction="You are JARVIS, a helpful AI operating companion. Keep answers concise."
                     )
@@ -288,11 +237,7 @@ class ResponseSynthesizerAgent(A2AAgentBase):
             except Exception:
                 pass
             if not message:
-                message = f"JARVIS online. System standing by. Operational check successful. Output: \"{original_prompt}\""
-
-        # Cleanup gathered data
-        if workflow_id in self.gathered_data:
-            del self.gathered_data[workflow_id]
+                message = f"JARVIS online. System standing by. Operational check successful. Output: \"{prompt}\""
 
         response_payload = {
             "status": "success",
@@ -311,4 +256,28 @@ class ResponseSynthesizerAgent(A2AAgentBase):
         }
         
         self.publish_event("COMPLETE", workflow_id, request_id, response_payload)
-        return response_payload
+
+class UIAgent(A2AAgentBase):
+    def __init__(self):
+        super().__init__("ui_agent")
+
+    def handle_event(self, event: AgentEvent):
+        pass
+
+class BackgroundAgent(A2AAgentBase):
+    def __init__(self):
+        super().__init__("background_agent")
+
+    def run_background_checks(self, workflow_id: str, request_id: str):
+        try:
+            due = call_mcp_tool("get_due_reminders")
+            if due:
+                self.publish_event("REMINDER_TRIGGER", workflow_id, request_id, {"due": due})
+        except Exception:
+            pass
+
+# Maintain legacy class name bindings for safety and backwards-compatibility
+TelemetryAgent = BackgroundDataAgent
+MemoryAgent = BackgroundDataAgent
+ReminderAgent = BackgroundDataAgent
+ResponseSynthesizerAgent = UIFrontendAgent

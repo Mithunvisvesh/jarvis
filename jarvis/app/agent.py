@@ -1,4 +1,3 @@
-# ruff: noqa
 # Copyright 2026 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -28,8 +27,9 @@ from google.adk.utils.content_utils import extract_text_from_content
 from google.genai import Client
 
 from tools.telemetry_server import get_system_stats
-from app.reminder_agent import reminder_agent_node
-from app.memory_agent import memory_store_node, memory_recall_node
+from app.memory_store import add_fact, recall_facts
+from app.reminder_parser import parse_reminder
+from app.reminder_store import add_reminder
 
 _, project_id = google.auth.default()
 os.environ["GOOGLE_CLOUD_PROJECT"] = project_id
@@ -39,28 +39,14 @@ os.environ["GOOGLE_GENAI_USE_VERTEXAI"] = "True"
 
 # --- PRODUCTION PATH (EXISTING CODESPACE PATH) ---
 def get_weather(query: str) -> str:
-    """Simulates a web search. Use it get information on weather.
-
-    Args:
-        query: A string containing the location to get weather information for.
-
-    Returns:
-        A string with the simulated weather information for the queried location.
-    """
+    """Simulates a web search. Use it get information on weather."""
     if "sf" in query.lower() or "san francisco" in query.lower():
         return "It's 60 degrees and foggy."
     return "It's 90 degrees and sunny."
 
 
 def get_current_time(query: str) -> str:
-    """Simulates getting the current time for a city.
-
-    Args:
-        city: The name of the city to get the current time for.
-
-    Returns:
-        A string with the current time information.
-    """
+    """Simulates getting the current time for a city."""
     if "sf" in query.lower() or "san francisco" in query.lower():
         tz_identifier = "America/Los_Angeles"
     else:
@@ -87,7 +73,7 @@ app = App(
 )
 
 
-# --- PARALLEL WORKFLOW PATH (PHASE 2 WORKFLOW) ---
+# --- PARALLEL WORKFLOW PATH (PHASE 6 A2A GRAPH) ---
 
 @node(name="orchestrator")
 def orchestrator_node(ctx, node_input) -> Event:
@@ -121,126 +107,142 @@ def orchestrator_node(ctx, node_input) -> Event:
     elif is_system:
         intent = "SYSTEM"
 
+    ctx.state["route"] = intent
     return Event(route=intent, output=text)
 
 
-@node(name="telemetry_node")
-def telemetry_node_node(ctx, node_input) -> str:
-    """Gathers system stats from the telemetry server and saves to state."""
-    stats = get_system_stats()
-    ctx.state['cpuLoad'] = stats['cpuLoad']
-    ctx.state['ramLoad'] = stats['ramLoad']
-    ctx.state['diskLoad'] = stats['diskLoad']
-    ctx.state['gpuLoad'] = stats['gpuLoad']
-    return "Diagnostics successfully compiled."
-
-
-@node(name="synthesis_node")
-def synthesis_node_node(ctx, node_input) -> str:
-    """Compiles a report or conversational response based on routing and state."""
-    # 1. Telemetry diagnostics
-    cpu = ctx.state.get('cpuLoad')
-    if cpu is not None:
-        ram = ctx.state.get('ramLoad')
-        disk = ctx.state.get('diskLoad')
-        gpu = ctx.state.get('gpuLoad')
-
-        # Check for threshold alerts
-        alerts = []
-        if cpu > 85:
-            alerts.append("CRITICAL CPU LOAD.")
-        if ram > 90:
-            alerts.append("CRITICAL RAM ALLOCATION.")
-        alert_msg = f" ({' '.join(alerts)})" if alerts else ""
-
-        return (
-            f"JARVIS System Diagnostics Report:\n"
-            f"- CPU Load: {cpu}%\n"
-            f"- RAM Allocation: {ram}%\n"
-            f"- Disk Index: {disk}%\n"
-            f"- GPU Performance: {gpu}%\n"
-            f"Diagnostics operational. All systems nominal.{alert_msg}"
-        )
-
-    # 2. Reminder created
-    reminder = ctx.state.get('created_reminder')
-    if reminder:
-        return f"Operational reminder parsed. Temporal buffer updated successfully with: \"{reminder['title']}\"."
-
-    # 3. Memory stored
-    stored_fact = ctx.state.get('stored_fact')
-    if stored_fact:
-        return f"Operational memory stored: \"{stored_fact}\"."
-
-    # 4. Memory recalled
-    recalled = ctx.state.get('recalled_fact')
-    if recalled:
-        fact = recalled.get("fact")
-        confidence = recalled.get("confidence", 0.0)
-        
-        if confidence < 0.50 or not fact:
-            return "I don't have a reliable memory for that."
+@node(name="background_data_node")
+def background_data_node(ctx, node_input) -> str:
+    """Handles tool polling and memory/reminder updates in the background."""
+    route = ctx.state.get("route", "CHAT")
+    prompt = str(node_input)
+    
+    session_id = "default"
+    if hasattr(ctx, "session") and ctx.session:
+        session_id = getattr(ctx.session, "id", str(ctx.session))
+    workflow_id = ctx.state.get("workflow_id") or f"wf-{session_id}"
+    request_id = ctx.state.get("request_id") or "req-default"
+    
+    from app.a2a_agents import BackgroundDataAgent
+    from app.event_bus import AgentEvent, EventPayload, global_event_bus
+    
+    bg_agent = BackgroundDataAgent()
+    
+    # Capture the BACKGROUND_DATA_COMPLETE event published by the bg_agent
+    captured_data = {}
+    def on_bg_complete(event: AgentEvent):
+        if event.payload.workflow_id == workflow_id:
+            captured_data["event"] = event
             
-        raw_query = str(node_input)
-        if confidence >= 0.80:
-            # Answer normally
-            try:
-                client = Client()
-                response = client.models.generate_content(
-                    model="gemini-2.5-flash",
-                    contents=f"Answer the user query: '{raw_query}' based on this stored fact: '{fact}'. Keep it concise.",
-                )
-                if response.text:
-                    return response.text.strip()
-            except Exception:
-                pass
-            return f"Based on my memory, {fact}."
-        else:
-            # Answer with uncertainty wording
-            try:
-                client = Client()
-                response = client.models.generate_content(
-                    model="gemini-2.5-flash",
-                    contents=f"Answer the user query: '{raw_query}' based on this stored fact: '{fact}'. Express uncertainty or tell the user you are not entirely sure, but recall this fact. Keep it concise.",
-                )
-                if response.text:
-                    return response.text.strip()
-            except Exception:
-                pass
-            return f"I am not entirely sure, but I recall: {fact}."
-
-    # 5. Default chat fallback
-    prompt_text = str(node_input)
-    try:
-        client = Client()
-        response = client.models.generate_content(
-            model="gemini-2.5-flash",
-            contents=prompt_text,
-            config=types.GenerateContentConfig(
-                system_instruction="You are JARVIS, a helpful AI operating companion. Keep answers concise."
-            )
+    global_event_bus.subscribe("BACKGROUND_DATA_COMPLETE", on_bg_complete)
+    
+    # Create the INTENT_DETECTED event
+    event = AgentEvent(
+        event_type="INTENT_DETECTED",
+        sender="orchestrator",
+        payload=EventPayload(
+            request_id=request_id,
+            workflow_id=workflow_id,
+            data={"intent": route, "prompt": prompt}
         )
-        if response.text:
-            return response.text
-    except Exception:
-        pass
+    )
+    
+    # Run the background agent by handling the event
+    bg_agent.handle_intent(event)
+    
+    # Retrieve the raw data from the captured event and store in ctx.state
+    bg_complete_event = captured_data.get("event")
+    if bg_complete_event:
+        raw_data = bg_complete_event.payload.data.get("raw_data", {})
+        ctx.state["raw_data"] = raw_data
+        
+        # Save specific keys to ctx.state to pass integration tests
+        if route == "SYSTEM":
+            stats = raw_data.get("stats", {})
+            ctx.state['cpuLoad'] = stats.get('cpuLoad')
+            ctx.state['ramLoad'] = stats.get('ramLoad')
+            ctx.state['diskLoad'] = stats.get('diskLoad')
+            ctx.state['gpuLoad'] = stats.get('gpuLoad')
+            ctx.state['telemetryGathered'] = True
+        elif route == "MEMORY_STORE":
+            ctx.state["stored_fact"] = raw_data.get("stored_fact")
+            ctx.state["memoryStored"] = True
+        elif route == "MEMORY_RECALL":
+            ctx.state["recalled_fact"] = raw_data.get("recalled_fact")
+            ctx.state["memoryRecalled"] = True
+        elif route == "REMINDER":
+            ctx.state["created_reminder"] = raw_data.get("created_reminder")
+            ctx.state["reminderCreated"] = True
+            
+    return "Background processing complete."
 
-    return f"JARVIS online. System standing by. Operational check successful. Output: \"{prompt_text}\""
+
+@node(name="ui_frontend_node")
+def ui_frontend_node(ctx, node_input) -> str:
+    """Formats the final UI React state payload (role of UI_Frontend_Agent)."""
+    route = ctx.state.get("route", "CHAT")
+    prompt = str(node_input)
+    
+    session_id = "default"
+    if hasattr(ctx, "session") and ctx.session:
+        session_id = getattr(ctx.session, "id", str(ctx.session))
+    workflow_id = ctx.state.get("workflow_id") or f"wf-{session_id}"
+    request_id = ctx.state.get("request_id") or "req-default"
+    
+    from app.a2a_agents import UIFrontendAgent
+    from app.event_bus import AgentEvent, EventPayload, global_event_bus
+    
+    ui_agent = UIFrontendAgent()
+    
+    # Capture the COMPLETE event published by ui_agent
+    captured_payload = {}
+    def on_complete(event: AgentEvent):
+        if event.payload.workflow_id == workflow_id:
+            captured_payload["data"] = event.payload.data
+            
+    global_event_bus.subscribe("COMPLETE", on_complete)
+    
+    # Reconstruct the BACKGROUND_DATA_COMPLETE event
+    raw_data = ctx.state.get("raw_data", {})
+    bg_complete_event = AgentEvent(
+        event_type="BACKGROUND_DATA_COMPLETE",
+        sender="Background_Data_Agent",
+        payload=EventPayload(
+            request_id=request_id,
+            workflow_id=workflow_id,
+            data={
+                "intent": route,
+                "prompt": prompt,
+                "raw_data": raw_data
+            }
+        )
+    )
+    
+    # Run the UI Frontend agent
+    ui_agent.handle_data(bg_complete_event)
+    
+    # Extract the synthesized message from the COMPLETE event payload
+    complete_data = captured_payload.get("data", {})
+    
+    # If complete_data has gpuLoad, save to ctx.state to keep state synced for POST /api/chat
+    if route == "SYSTEM" and complete_data:
+        ctx.state["cpuLoad"] = complete_data.get("cpuLoad")
+        ctx.state["ramLoad"] = complete_data.get("ramLoad")
+        ctx.state["diskLoad"] = complete_data.get("diskLoad")
+        ctx.state["gpuLoad"] = complete_data.get("gpuLoad")
+        
+    message = complete_data.get("message", "")
+    return message
+
+    return message
 
 
 jarvis_core_workflow = Workflow(
     name="jarvis_core_workflow",
     edges=[
         Edge(from_node=START, to_node=orchestrator_node),
-        Edge(from_node=orchestrator_node, to_node=telemetry_node_node, route='SYSTEM'),
-        Edge(from_node=orchestrator_node, to_node=reminder_agent_node, route='REMINDER'),
-        Edge(from_node=orchestrator_node, to_node=memory_store_node, route='MEMORY_STORE'),
-        Edge(from_node=orchestrator_node, to_node=memory_recall_node, route='MEMORY_RECALL'),
-        Edge(from_node=orchestrator_node, to_node=synthesis_node_node, route='CHAT'),
-        Edge(from_node=telemetry_node_node, to_node=synthesis_node_node),
-        Edge(from_node=reminder_agent_node, to_node=synthesis_node_node),
-        Edge(from_node=memory_store_node, to_node=synthesis_node_node),
-        Edge(from_node=memory_recall_node, to_node=synthesis_node_node)
+        Edge(from_node=orchestrator_node, to_node=background_data_node),
+        Edge(from_node=background_data_node, to_node=ui_frontend_node)
     ]
 )
 

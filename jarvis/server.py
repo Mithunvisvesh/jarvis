@@ -211,26 +211,17 @@ async def chat_stream_endpoint(request: JarvisRequest):
             
         # Spawn A2A Agents
         from app.a2a_agents import (
-            OrchestratorAgent, TelemetryAgent, MemoryAgent, 
-            ReminderAgent, BackgroundAgent, ResponseSynthesizerAgent
+            OrchestratorAgent, BackgroundDataAgent, UIFrontendAgent, BackgroundAgent
         )
         
         orch = OrchestratorAgent()
-        telemetry_agent = TelemetryAgent()
-        memory_agent = MemoryAgent()
-        reminder_agent = ReminderAgent()
+        bg_data_agent = BackgroundDataAgent()
+        ui_frontend_agent = UIFrontendAgent()
         bg_agent = BackgroundAgent()
-        synth_agent = ResponseSynthesizerAgent()
         
         # Wire events
-        global_event_bus.subscribe("INTENT_DETECTED", telemetry_agent.handle_intent)
-        global_event_bus.subscribe("INTENT_DETECTED", memory_agent.handle_intent)
-        global_event_bus.subscribe("INTENT_DETECTED", reminder_agent.handle_intent)
-        
-        global_event_bus.subscribe("TELEMETRY_GATHERED", synth_agent.handle_response)
-        global_event_bus.subscribe("MEMORY_STORED", synth_agent.handle_response)
-        global_event_bus.subscribe("MEMORY_RECALLED", synth_agent.handle_response)
-        global_event_bus.subscribe("REMINDER_CREATED", synth_agent.handle_response)
+        global_event_bus.subscribe("INTENT_DETECTED", bg_data_agent.handle_intent)
+        global_event_bus.subscribe("BACKGROUND_DATA_COMPLETE", ui_frontend_agent.handle_data)
         
         async def run_workflow():
             try:
@@ -262,9 +253,6 @@ async def chat_stream_endpoint(request: JarvisRequest):
                 
                 # Yield execution duration padding for A2A processing
                 await asyncio.sleep(0.6)
-                
-                # Final response compile
-                synth_agent.synthesize(workflow_id, request_id, request.prompt)
                 
                 # Background triggers
                 bg_agent.run_background_checks(workflow_id, request_id)

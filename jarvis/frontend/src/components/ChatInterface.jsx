@@ -29,6 +29,16 @@ export default function ChatInterface() {
     scrollToBottom();
   }, [messages, isThinking, executionState]);
 
+  // Hook to monitor and respond to incoming ADK 2.0 execution state transitions
+  useEffect(() => {
+    if (isThinking) {
+      console.log(`[ADK 2.0 Event] Transitioning to execution state: ${executionState}`);
+      if (executionState === 'Analyzing Request' || executionState === 'Routing Intent') {
+        console.log('%c[ADK 2.0] Thinking/Routing state detected. Triggering ACCENT_CYAN glow.', 'color: #00D4FF; font-weight: bold;');
+      }
+    }
+  }, [executionState, isThinking]);
+
   const handleSend = (e) => {
     e.preventDefault();
     if (!input.trim()) return;
@@ -42,16 +52,23 @@ export default function ChatInterface() {
     { text: 'Is the ReAct Agent online?', label: 'AGENT_PING' }
   ];
 
+  const isThinkingOrRouting = isThinking && (executionState === 'Analyzing Request' || executionState === 'Routing Intent');
+
   return (
-    <div style={{
-      display: 'flex',
-      flexDirection: 'column',
-      height: '100%',
-      backgroundColor: 'rgba(5, 8, 16, 0.65)',
-      borderRight: '1px solid var(--border-muted)',
-      overflow: 'hidden',
-      position: 'relative'
-    }}>
+    <div 
+      className={isThinkingOrRouting ? 'thinking-pulse' : ''}
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        height: '100%',
+        backgroundColor: 'rgba(5, 8, 16, 0.65)',
+        borderRight: '1px solid var(--border-muted)',
+        overflow: 'hidden',
+        position: 'relative',
+        transition: 'all 0.3s ease-in-out',
+        boxShadow: isThinkingOrRouting ? '0 0 25px var(--accent-cyan), inset 0 0 15px rgba(0, 212, 255, 0.15)' : 'none'
+      }}
+    >
       {/* Header Banner */}
       <div style={{
         padding: '16px 24px',

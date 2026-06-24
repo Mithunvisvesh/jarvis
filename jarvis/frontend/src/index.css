@@ -133,25 +133,25 @@ body {
 /* Animations */
 @keyframes pulse-cyan {
   0% {
-    box-shadow: 0 0 5px rgba(0, 212, 255, 0.2), inset 0 0 5px rgba(0, 212, 255, 0.1);
+    box-shadow: 0 0 5px var(--accent-cyan), inset 0 0 5px rgba(0, 212, 255, 0.1);
   }
   50% {
-    box-shadow: 0 0 20px rgba(0, 212, 255, 0.5), inset 0 0 10px rgba(0, 212, 255, 0.25);
+    box-shadow: 0 0 20px var(--accent-cyan), inset 0 0 10px rgba(0, 212, 255, 0.25);
   }
   100% {
-    box-shadow: 0 0 5px rgba(0, 212, 255, 0.2), inset 0 0 5px rgba(0, 212, 255, 0.1);
+    box-shadow: 0 0 5px var(--accent-cyan), inset 0 0 5px rgba(0, 212, 255, 0.1);
   }
 }
 
 @keyframes pulse-pink {
   0% {
-    box-shadow: 0 0 5px rgba(255, 0, 128, 0.2);
+    box-shadow: 0 0 5px var(--accent-pink);
   }
   50% {
-    box-shadow: 0 0 20px rgba(255, 0, 128, 0.5);
+    box-shadow: 0 0 20px var(--accent-pink);
   }
   100% {
-    box-shadow: 0 0 5px rgba(255, 0, 128, 0.2);
+    box-shadow: 0 0 5px var(--accent-pink);
   }
 }
 
