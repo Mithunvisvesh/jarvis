@@ -195,3 +195,21 @@ We wired a state-driven view manager to display dedicated, full-screen operation
   - Built a dedicated full-page panel rendering episodic memory facts.
   - Integrated the character-level LCS query scorer showing confidence match percentages when searching the memory banks.
 - **Diagnostics Retained**: Toggling Developer Mode continues to open the right-sidebar (containing Telemetry Panel, Trace Timeline, Event Logger, and Agenda list) in any active view.
+
+---
+
+## 🛠️ Day 5: Cinematic Polish & Thematic Aesthetic
+
+### 1. Task 5.1 — Breathing Animations & Layout Glow Adjustments
+We refined the CSS pulsing keyframes to represent a stable, comforting breathing rhythm rather than aggressive flashing:
+- **CSS Duration Scaling**: Extended the animation cycle from `2s` to `3s` infinite ease-in-out for both `pulse-cyan` and `pulse-pink` classes in [index.css](file:///d:/mithun_files/Personal/5-Day%20AI%20Agents%20Intensive%20Vibe%20Coding%20Course%20With%20Google/Capstone%20Project/jarvis/frontend/src/index.css).
+- **Subtle Shadow Ranges**: Restricted glow offsets to subtle `8px` to `20px` max box-shadow expansions with lower opacity values.
+- **Outer Wrapper Removal**: Removed the `thinking-pulse` classes and dynamic `boxShadow` styling from the top-level outer container wrapper of [ChatInterface.jsx](file:///d:/mithun_files/Personal/5-Day%20AI%20Agents%20Intensive%20Vibe%20Coding%20Course%20With%20Google/Capstone%20Project/jarvis/frontend/src/components/ChatInterface.jsx). The pulse animation resides strictly on the active stepper progress block during deep cognitive routing.
+
+### 2. Task 5.2 — Monospaced System Action Cards
+We implemented distinct UI action blocks in the message threads to display concrete system activities:
+- **Backend Schema Extension**: Added `action_taken: str | None = None` to the `JarvisResponse` model in [server.py](file:///d:/mithun_files/Personal/5-Day%20AI%20Agents%20Intensive%20Vibe%20Coding%20Course%20With%20Google/Capstone%20Project/jarvis/server.py).
+- **Sub-Agent Intent Mapping**: Programmed the `UIFrontendAgent` in [a2a_agents.py](file:///d:/mithun_files/Personal/5-Day%20AI%20Agents%20Intensive%20Vibe%20Coding%20Course%20With%20Google/Capstone%20Project/jarvis/app/a2a_agents.py) to map descriptive text messages for all major intents (telemetry checks, new memories stored, memories recalled with confidence rates, scheduled reminders).
+- **State Capture**: Configured the global React provider context [JarvisContext.jsx](file:///d:/mithun_files/Personal/5-Day%20AI%20Agents%20Intensive%20Vibe%20Coding%20Course%20With%20Google/Capstone%20Project/jarvis/frontend/src/context/JarvisContext.jsx) to preserve `action_taken` metadata in message states.
+- **UI Bubble Cards**: Styled a dedicated monospaced `SYSTEM ACTION EXECUTED` card inside the message bubbles in [ChatInterface.jsx](file:///d:/mithun_files/Personal/5-Day%20AI%20Agents%20Intensive%20Vibe%20Coding%20Course%20With%20Google/Capstone%20Project/jarvis/frontend/src/components/ChatInterface.jsx) featuring a dark background, custom padding, and a `--accent-cyan` left border.
+

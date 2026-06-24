@@ -170,6 +170,7 @@ class UIFrontendAgent(A2AAgentBase):
         gpu_load = 10
         message = ""
         route = intent
+        action_taken = None
 
         if intent == "SYSTEM":
             stats = raw_data.get("stats", {})
@@ -185,14 +186,17 @@ class UIFrontendAgent(A2AAgentBase):
                 f"- GPU Performance: {gpu_load}%\n"
                 f"Diagnostics operational. All systems nominal."
             )
+            action_taken = "Executed MCP Tool: get_system_stats"
             
         elif intent == "MEMORY_STORE":
             memory_status = raw_data.get("memory_status", "created")
             stored_fact = raw_data.get("stored_fact", "")
             if memory_status == "acknowledged":
                 message = "I already have that noted."
+                action_taken = "Memory Engine: Verified duplicate fact (Ignored duplication)"
             else:
                 message = f"Operational memory stored: \"{stored_fact}\"."
+                action_taken = f"Memory Engine: Stored fact '{stored_fact}' in local database"
             
         elif intent == "MEMORY_RECALL":
             result = raw_data.get("recalled_fact", {})
@@ -201,7 +205,9 @@ class UIFrontendAgent(A2AAgentBase):
             
             if confidence < 0.50 or not fact:
                 message = "I don't have a reliable memory for that."
+                action_taken = f"Memory Engine: Queried fact, found no reliable match (Confidence: {int(confidence*100)}%)"
             else:
+                action_taken = f"Memory Engine: Recalled fact matching semantic query (Confidence: {int(confidence*100)}%)"
                 # UI Frontend Agent formatting memory recall using gemini-2.5-flash
                 try:
                     client = Client()
@@ -229,6 +235,7 @@ class UIFrontendAgent(A2AAgentBase):
         elif intent == "REMINDER":
             reminder = raw_data.get("created_reminder", {})
             message = f"Operational reminder parsed. Agenda updated successfully with: \"{reminder.get('title')}\"."
+            action_taken = f"Reminder Engine: Queued task '{reminder.get('title')}' in Agenda"
             
         else:
             # Default CHAT fallback using gemini-2.5-flash
@@ -261,7 +268,8 @@ class UIFrontendAgent(A2AAgentBase):
             "gpu_load": gpu_load,
             "cpu_load": cpu_load,
             "ram_load": ram_load,
-            "disk_load": disk_load
+            "disk_load": disk_load,
+            "action_taken": action_taken
         }
         
         self.publish_event("COMPLETE", workflow_id, request_id, response_payload)

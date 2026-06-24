@@ -445,6 +445,7 @@ export function JarvisProvider({ children }) {
         id: `msg-${Date.now() + 1}`,
         sender: 'jarvis',
         text: finalPayload.message || 'JARVIS online.',
+        action_taken: finalPayload.action_taken || null,
         timestamp: new Date()
       };
 

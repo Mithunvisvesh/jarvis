@@ -54,6 +54,7 @@ class JarvisResponse(BaseModel):
     route: str
     temperature: int | None = None
     sync_active: bool = True
+    action_taken: str | None = None
     # For backward compatibility
     cpu_load: int | None = None
     ram_load: int | None = None
@@ -82,6 +83,7 @@ async def chat_endpoint(request: JarvisRequest, use_workflow: bool = Query(True)
             "cpu_load": 28,
             "ram_load": 54,
             "disk_load": 42,
+            "action_taken": "Security Firewall: Blocked prompt injection signature"
         }
         return JarvisResponse(**response_dict)
 
@@ -294,7 +296,8 @@ async def chat_stream_endpoint(request: JarvisRequest):
                         "gpu_load": 10,
                         "cpu_load": 28,
                         "ram_load": 54,
-                        "disk_load": 42
+                        "disk_load": 42,
+                        "action_taken": "Security Firewall: Blocked prompt injection signature"
                     }
                     orch.publish_event("COMPLETE", workflow_id, request_id, payload)
                     return

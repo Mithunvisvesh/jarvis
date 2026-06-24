@@ -101,11 +101,8 @@ export default function ChatInterface() {
     { text: 'Is the ReAct Agent online?', label: 'AGENT_PING' }
   ];
 
-  const isThinkingOrRouting = isThinking && (executionState === 'Analyzing Request' || executionState === 'Routing Intent');
-
   return (
     <div 
-      className={isThinkingOrRouting ? 'thinking-pulse' : ''}
       style={{
         display: 'flex',
         flexDirection: 'column',
@@ -113,8 +110,7 @@ export default function ChatInterface() {
         backgroundColor: 'rgba(5, 8, 16, 0.65)',
         overflow: 'hidden',
         position: 'relative',
-        transition: 'all 0.3s ease-in-out',
-        boxShadow: isThinkingOrRouting ? '0 0 25px var(--accent-cyan), inset 0 0 15px rgba(0, 212, 255, 0.15)' : 'none'
+        transition: 'all 0.3s ease-in-out'
       }}
     >
       {/* Header Banner */}
@@ -419,6 +415,24 @@ export default function ChatInterface() {
                   whiteSpace: 'pre-wrap'
                 }}
               >
+                {isJarvis && msg.action_taken && (
+                  <div style={{
+                    fontFamily: 'var(--font-mono)',
+                    fontSize: '11px',
+                    backgroundColor: 'rgba(0, 0, 0, 0.35)',
+                    borderLeft: '3px solid var(--accent-cyan)',
+                    padding: '8px 12px',
+                    marginBottom: '12px',
+                    borderRadius: '0 4px 4px 0',
+                    color: 'rgba(255, 255, 255, 0.9)',
+                    letterSpacing: '0.5px'
+                  }}>
+                    <span style={{ color: 'var(--accent-cyan)', fontWeight: 'bold', display: 'block', marginBottom: '2px', fontSize: '9px' }}>
+                      [SYSTEM ACTION EXECUTED]
+                    </span>
+                    {msg.action_taken}
+                  </div>
+                )}
                 {msg.text}
               </div>
             </div>

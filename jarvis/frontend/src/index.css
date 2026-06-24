@@ -133,25 +133,25 @@ body {
 /* Animations */
 @keyframes pulse-cyan {
   0% {
-    box-shadow: 0 0 5px var(--accent-cyan), inset 0 0 5px rgba(0, 212, 255, 0.1);
+    box-shadow: 0 0 8px rgba(0, 212, 255, 0.25), inset 0 0 5px rgba(0, 212, 255, 0.05);
   }
   50% {
-    box-shadow: 0 0 20px var(--accent-cyan), inset 0 0 10px rgba(0, 212, 255, 0.25);
+    box-shadow: 0 0 20px rgba(0, 212, 255, 0.45), inset 0 0 10px rgba(0, 212, 255, 0.15);
   }
   100% {
-    box-shadow: 0 0 5px var(--accent-cyan), inset 0 0 5px rgba(0, 212, 255, 0.1);
+    box-shadow: 0 0 8px rgba(0, 212, 255, 0.25), inset 0 0 5px rgba(0, 212, 255, 0.05);
   }
 }
 
 @keyframes pulse-pink {
   0% {
-    box-shadow: 0 0 5px var(--accent-pink);
+    box-shadow: 0 0 8px rgba(255, 0, 128, 0.25), inset 0 0 5px rgba(255, 0, 128, 0.05);
   }
   50% {
-    box-shadow: 0 0 20px var(--accent-pink);
+    box-shadow: 0 0 20px rgba(255, 0, 128, 0.45), inset 0 0 10px rgba(255, 0, 128, 0.15);
   }
   100% {
-    box-shadow: 0 0 5px var(--accent-pink);
+    box-shadow: 0 0 8px rgba(255, 0, 128, 0.25), inset 0 0 5px rgba(255, 0, 128, 0.05);
   }
 }
 
@@ -162,11 +162,11 @@ body {
 }
 
 .thinking-pulse {
-  animation: pulse-cyan 2s infinite ease-in-out;
+  animation: pulse-cyan 3s infinite ease-in-out;
 }
 
 .pink-pulse {
-  animation: pulse-pink 2s infinite ease-in-out;
+  animation: pulse-pink 3s infinite ease-in-out;
 }
 
 .flicker {
