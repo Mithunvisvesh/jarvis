@@ -13,6 +13,28 @@ import {
 
 const JarvisContext = createContext(undefined);
 
+const getWelcomeMessage = (remindersCount) => {
+  const today = new Date();
+  const hours = today.getHours();
+  let timeOfDay = 'evening';
+  if (hours < 12) {
+    timeOfDay = 'morning';
+  } else if (hours < 17) {
+    timeOfDay = 'afternoon';
+  }
+
+  const options = { month: 'long', day: 'numeric' };
+  const todayStr = today.toLocaleDateString('en-US', options);
+
+  const deadline = new Date('2026-07-06T00:00:00');
+  const d1 = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  const d2 = new Date(deadline.getFullYear(), deadline.getMonth(), deadline.getDate());
+  const timeDiff = d2.getTime() - d1.getTime();
+  const daysAway = Math.round(timeDiff / (1000 * 3600 * 24));
+
+  return `JARVIS online. Good ${timeOfDay}, Mithun. Today is ${todayStr} — your capstone deadline is ${daysAway} days away. I have ${remindersCount} items in your agenda. How can I help you today?`;
+};
+
 export function JarvisProvider({ children }) {
   const [messages, setMessages] = useState(() => {
     try {
@@ -33,7 +55,7 @@ export function JarvisProvider({ children }) {
       {
         id: 'init',
         sender: 'jarvis',
-        text: 'JARVIS online. Core synchronization active. System diagnostics normal. Instruct me to analyze data, schedule tasks, or check local system state.',
+        text: getWelcomeMessage(0),
         timestamp: new Date()
       }
     ];
@@ -94,12 +116,34 @@ export function JarvisProvider({ children }) {
     try {
       const data = await getReminders();
       if (Array.isArray(data)) {
-        setReminders(data.map(item => ({
+        const mappedReminders = data.map(item => ({
           id: item.id,
           text: item.title,
           time: item.day ? `${item.time} (${item.day})` : item.time,
           completed: item.status === 'completed'
-        })));
+        }));
+        setReminders(mappedReminders);
+        
+        // Dynamically update welcome message with actual count N
+        const welcomeText = getWelcomeMessage(mappedReminders.length);
+        setMessages(prev => {
+          if (prev.length > 0) {
+            return prev.map((msg, index) => {
+              if (index === 0 && (msg.id === 'init' || msg.id.startsWith('init-') || msg.text.startsWith('JARVIS online.'))) {
+                return { ...msg, text: welcomeText };
+              }
+              return msg;
+            });
+          }
+          return [
+            {
+              id: 'init',
+              sender: 'jarvis',
+              text: welcomeText,
+              timestamp: new Date()
+            }
+          ];
+        });
       }
     } catch (err) {
       console.error("Failed to fetch reminders:", err);
@@ -624,7 +668,7 @@ export function JarvisProvider({ children }) {
       {
         id: `init-${Date.now()}`,
         sender: 'jarvis',
-        text: 'JARVIS online. Core synchronization active. System diagnostics normal. Instruct me to analyze data, schedule tasks, or check local system state.',
+        text: getWelcomeMessage(reminders.length),
         timestamp: new Date()
       }
     ]);
