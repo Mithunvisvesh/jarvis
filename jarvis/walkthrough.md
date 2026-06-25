@@ -7,12 +7,12 @@ This walkthrough documents the successful implementation of the **Phase 6** refa
 ## 📁 Updated File Tree & Key Modifications
 
 The files containing the primary changes are:
-1. [tools/mcp_client.py](file:///d:/mithun_files/Personal/5-Day%20AI%20Agents%20Intensive%20Vibe%20Coding%20Course%20With%20Google/Capstone%20Project/jarvis/tools/mcp_client.py): Refactored to spawn `mcp_server.py` as a separate Python subprocess, implementing a real stdio transport layer with robust fallback.
-2. [app/agent.py](file:///d:/mithun_files/Personal/5-Day%20AI%20Agents%20Intensive%20Vibe%20Coding%20Course%20With%20Google/Capstone%20Project/jarvis/app/agent.py): Refactored the ADK 2.0 workflow graph nodes (`background_data_node` and `ui_frontend_node`) to delegate directly to the new A2A agents via the Pydantic event bus.
-3. [app/a2a_agents.py](file:///d:/mithun_files/Personal/5-Day%20AI%20Agents%20Intensive%20Vibe%20Coding%20Course%20With%20Google/Capstone%20Project/jarvis/app/a2a_agents.py): Created the `BackgroundDataAgent` and `UIFrontendAgent` specialized sub-agents utilizing `gemini-2.5-flash`. Decoupled cognitive responsibilities cleanly.
-4. [server.py](file:///d:/mithun_files/Personal/5-Day%20AI%20Agents%20Intensive%20Vibe%20Coding%20Course%20With%20Google/Capstone%20Project/jarvis/server.py): Refactored the `/api/chat/stream` SSE stream generator to wire the orchestrator and A2A agents sequentially through the `global_event_bus` channels.
-5. [frontend/src/index.css](file:///d:/mithun_files/Personal/5-Day%20AI%20Agents%20Intensive%20Vibe%20Coding%20Course%20With%20Google/Capstone%20Project/jarvis/frontend/src/index.css): Modified keyframe animations (`pulse-cyan` and `pulse-pink`) to bind specific CSS variables `--accent-cyan` (#00D4FF) and `--accent-pink` (#FF0080) directly for glow and pulse transitions.
-6. [frontend/src/components/ChatInterface.jsx](file:///d:/mithun_files/Personal/5-Day%20AI%20Agents%20Intensive%20Vibe%20Coding%20Course%20With%20Google/Capstone%20Project/jarvis/frontend/src/components/ChatInterface.jsx): Bound the main chat layout container to a glow pulse animation using `--accent-cyan` when the active state transitions to `Analyzing Request` or `Routing Intent`. Added a specific `useEffect` hook listening to incoming state events.
+1. [tools/mcp_client.py](https://github.com/Mithunvisvesh/jarvis/blob/main/tools/mcp_client.py): Refactored to spawn `mcp_server.py` as a separate Python subprocess, implementing a real stdio transport layer with robust fallback.
+2. [app/agent.py](https://github.com/Mithunvisvesh/jarvis/blob/main/app/agent.py): Refactored the ADK 2.0 workflow graph nodes (`background_data_node` and `ui_frontend_node`) to delegate directly to the new A2A agents via the Pydantic event bus.
+3. [app/a2a_agents.py](https://github.com/Mithunvisvesh/jarvis/blob/main/app/a2a_agents.py): Created the `BackgroundDataAgent` and `UIFrontendAgent` specialized sub-agents utilizing `gemini-2.5-flash`. Decoupled cognitive responsibilities cleanly.
+4. [server.py](https://github.com/Mithunvisvesh/jarvis/blob/main/server.py): Refactored the `/api/chat/stream` SSE stream generator to wire the orchestrator and A2A agents sequentially through the `global_event_bus` channels.
+5. [frontend/src/index.css](https://github.com/Mithunvisvesh/jarvis/blob/main/frontend/src/index.css): Modified keyframe animations (`pulse-cyan` and `pulse-pink`) to bind specific CSS variables `--accent-cyan` (#00D4FF) and `--accent-pink` (#FF0080) directly for glow and pulse transitions.
+6. [frontend/src/components/ChatInterface.jsx](https://github.com/Mithunvisvesh/jarvis/blob/main/frontend/src/components/ChatInterface.jsx): Bound the main chat layout container to a glow pulse animation using `--accent-cyan` when the active state transitions to `Analyzing Request` or `Routing Intent`. Added a specific `useEffect` hook listening to incoming state events.
 
 ---
 
@@ -118,15 +118,15 @@ dist/assets/index-C6XHPe6I.js   249.93 kB │ gzip: 74.25 kB
 
 ### 1. Task 1.1 — Prevent Duplicate Memories
 We eradicated identical/highly similar memory entries by implementing a similarity-based verification layer before storing facts:
-- **Similarity Scoring**: Added `difflib.SequenceMatcher` checks to the `add_fact` logic in [memory_store.py](file:///d:/mithun_files/Personal/5-Day%20AI%20Agents%20Intensive%20Vibe%20Coding%20Course%20With%20Google/Capstone%20Project/jarvis/app/memory_store.py).
+- **Similarity Scoring**: Added `difflib.SequenceMatcher` checks to the `add_fact` logic in [memory_store.py](https://github.com/Mithunvisvesh/jarvis/blob/main/app/memory_store.py).
 - **Threshold Gating**: Set a strict `0.85` similarity threshold. If an incoming fact is `>= 85%` similar to an existing one, the append operation is blocked. Instead, the timestamp of the matching fact is updated, and it is returned with a `status: "acknowledged"` flag.
 - **UI Integration**: The `UIFrontendAgent` detects the `"acknowledged"` status in the complete event payload and returns the friendly confirmation: *"I already have that noted."* rather than replicating facts.
-- **Unit Test**: Added `test_prevent_duplicate_facts` in [test_memory.py](file:///d:/mithun_files/Personal/5-Day%20AI%20Agents%20Intensive%20Vibe%20Coding%20Course%20With%20Google/Capstone%20Project/jarvis/tests/unit/test_memory.py) to guarantee regression prevention.
+- **Unit Test**: Added `test_prevent_duplicate_facts` in [test_memory.py](https://github.com/Mithunvisvesh/jarvis/blob/main/tests/unit/test_memory.py) to guarantee regression prevention.
 
 ### 2. Task 1.2 — Latency Optimization ("Fast Path")
 We established a direct bypass route for simple conversational greetings:
-- **Workflow Route Gating**: Modified the `jarvis_core_workflow` in [agent.py](file:///d:/mithun_files/Personal/5-Day%20AI%20Agents%20Intensive%20Vibe%20Coding%20Course%20With%20Google/Capstone%20Project/jarvis/app/agent.py) to declare routing conditions on the edges: `CHAT` route goes directly from `orchestrator_node` to `ui_frontend_node`, bypassing `background_data_node` entirely.
-- **Streaming Event Bypass**: Wired a wrapper handler in [server.py](file:///d:/mithun_files/Personal/5-Day%20AI%20Agents%20Intensive%20Vibe%20Coding%20Course%20With%20Google/Capstone%20Project/jarvis/server.py)'s `chat_stream_endpoint` that intercepts `INTENT_DETECTED` events for `CHAT` and triggers the `UIFrontendAgent` immediately, bypassing the `BackgroundDataAgent` to eliminate unnecessary LLM calls and network/bus overhead for conversational inputs.
+- **Workflow Route Gating**: Modified the `jarvis_core_workflow` in [agent.py](https://github.com/Mithunvisvesh/jarvis/blob/main/app/agent.py) to declare routing conditions on the edges: `CHAT` route goes directly from `orchestrator_node` to `ui_frontend_node`, bypassing `background_data_node` entirely.
+- **Streaming Event Bypass**: Wired a wrapper handler in [server.py](https://github.com/Mithunvisvesh/jarvis/blob/main/server.py)'s `chat_stream_endpoint` that intercepts `INTENT_DETECTED` events for `CHAT` and triggers the `UIFrontendAgent` immediately, bypassing the `BackgroundDataAgent` to eliminate unnecessary LLM calls and network/bus overhead for conversational inputs.
 - **State Preservation**: Persisted the user's raw query to `ctx.state["prompt"]` inside `orchestrator_node` to ensure that bypassed nodes can cleanly retrieve the exact prompt without getting input string mismatches.
 
 ---
@@ -135,21 +135,21 @@ We established a direct bypass route for simple conversational greetings:
 
 ### 1. Task 2.1 — Developer Mode Toggle
 Introduced a toggle switch to separate the end-user cinematic operational overlay from the underlying DevOps/developer telemetry:
-- **Global Toggle State**: Created `isDeveloperMode` and `setIsDeveloperMode` in the global React [JarvisContext.jsx](file:///d:/mithun_files/Personal/5-Day%20AI%20Agents%20Intensive%20Vibe%20Coding%20Course%20With%20Google/Capstone%20Project/jarvis/frontend/src/context/JarvisContext.jsx).
-- **Header Control**: Placed a subtle `DEV` button in the header of [ChatInterface.jsx](file:///d:/mithun_files/Personal/5-Day%20AI%20Agents%20Intensive%20Vibe%20Coding%20Course%20With%20Google/Capstone%20Project/jarvis/frontend/src/components/ChatInterface.jsx) that toggles this state.
-- **Dynamic Layout & Rendition**: Modified [App.jsx](file:///d:/mithun_files/Personal/5-Day%20AI%20Agents%20Intensive%20Vibe%20Coding%20Course%20With%20Google/Capstone%20Project/jarvis/frontend/src/App.jsx) to hide all Telemetry Panels, Activity Timelines, Trace Views, and JSON dumps by default. When deactivated, the Right Sidebar displays ONLY the Agenda panel, and the layout columns re-adjust from `280px` to `240px`, centering and expanding the main chat window.
+- **Global Toggle State**: Created `isDeveloperMode` and `setIsDeveloperMode` in the global React [JarvisContext.jsx](https://github.com/Mithunvisvesh/jarvis/blob/main/frontend/src/context/JarvisContext.jsx).
+- **Header Control**: Placed a subtle `DEV` button in the header of [ChatInterface.jsx](https://github.com/Mithunvisvesh/jarvis/blob/main/frontend/src/components/ChatInterface.jsx) that toggles this state.
+- **Dynamic Layout & Rendition**: Modified [App.jsx](https://github.com/Mithunvisvesh/jarvis/blob/main/frontend/src/App.jsx) to hide all Telemetry Panels, Activity Timelines, Trace Views, and JSON dumps by default. When deactivated, the Right Sidebar displays ONLY the Agenda panel, and the layout columns re-adjust from `280px` to `240px`, centering and expanding the main chat window.
 
 ### 2. Task 2.2 — Rename of "Temporal Buffer" to "Agenda"
 Standardized terminology to align with human operational expectations:
-- **Component File Rename**: Renamed the React component file from `TemporalBuffer.jsx` to [Agenda.jsx](file:///d:/mithun_files/Personal/5-Day%20AI%20Agents%20Intensive%20Vibe%20Coding%20Course%20With%20Google/Capstone%20Project/jarvis/frontend/src/components/Agenda.jsx) and updated import references across [App.jsx](file:///d:/mithun_files/Personal/5-Day%20AI%20Agents%20Intensive%20Vibe%20Coding%20Course%20With%20Google/Capstone%20Project/jarvis/frontend/src/App.jsx).
+- **Component File Rename**: Renamed the React component file from `TemporalBuffer.jsx` to [Agenda.jsx](https://github.com/Mithunvisvesh/jarvis/blob/main/frontend/src/components/Agenda.jsx) and updated import references across [App.jsx](https://github.com/Mithunvisvesh/jarvis/blob/main/frontend/src/App.jsx).
 - **Frontend Labels & Constants**: Updated all headers, tooltips, empty state string indicators (`AGENDA_EMPTY`), and status messages.
-- **Agent System Instructions**: Modified [a2a_agents.py](file:///d:/mithun_files/Personal/5-Day%20AI%20Agents%20Intensive%20Vibe%20Coding%20Course%20With%20Google/Capstone%20Project/jarvis/app/a2a_agents.py) prompts for both `BackgroundDataAgent` and `UIFrontendAgent` to explicitly instruct the models: *"Refer to the user's scheduled tasks and active reminders as their Agenda. Never use the term Temporal Buffer."*
-- **Test Alignment**: Updated assertions in [test_reminder_workflow.py](file:///d:/mithun_files/Personal/5-Day%20AI%20Agents%20Intensive%20Vibe%20Coding%20Course%20With%20Google/Capstone%20Project/jarvis/tests/integration/test_reminder_workflow.py) and [test_workflow_routing.py](file:///d:/mithun_files/Personal/5-Day%20AI%20Agents%20Intensive%20Vibe%20Coding%20Course%20With%20Google/Capstone%20Project/jarvis/tests/integration/test_workflow_routing.py) to accept both terms, ensuring backwards compatibility.
+- **Agent System Instructions**: Modified [a2a_agents.py](https://github.com/Mithunvisvesh/jarvis/blob/main/app/a2a_agents.py) prompts for both `BackgroundDataAgent` and `UIFrontendAgent` to explicitly instruct the models: *"Refer to the user's scheduled tasks and active reminders as their Agenda. Never use the term Temporal Buffer."*
+- **Test Alignment**: Updated assertions in [test_reminder_workflow.py](https://github.com/Mithunvisvesh/jarvis/blob/main/tests/integration/test_reminder_workflow.py) and [test_workflow_routing.py](https://github.com/Mithunvisvesh/jarvis/blob/main/tests/integration/test_workflow_routing.py) to accept both terms, ensuring backwards compatibility.
 
 ### 3. Task 2.3 — True Reset Behavior (Clear UI vs Wipe State)
 Decoupled visual logging cleanup from backend short-term session state:
-- **Clear Chat (UI)**: Renamed the existing log reset button to `CLEAR CHAT` inside [ChatInterface.jsx](file:///d:/mithun_files/Personal/5-Day%20AI%20Agents%20Intensive%20Vibe%20Coding%20Course%20With%20Google/Capstone%20Project/jarvis/frontend/src/components/ChatInterface.jsx) to only flush the React chat messages array locally without touching the backend session context.
-- **Wipe Session (Backend State)**: Defined a new backend endpoint `POST /api/chat/reset` in [server.py](file:///d:/mithun_files/Personal/5-Day%20AI%20Agents%20Intensive%20Vibe%20Coding%20Course%20With%20Google/Capstone%20Project/jarvis/server.py) that wipes the orchestrator session's state dictionary and working memory history. Added a `WIPE SESSION` button in [ChatInterface.jsx](file:///d:/mithun_files/Personal/5-Day%20AI%20Agents%20Intensive%20Vibe%20Coding%20Course%20With%20Google/Capstone%20Project/jarvis/frontend/src/components/ChatInterface.jsx) (visible only when Developer Mode is active) that hits this API.
+- **Clear Chat (UI)**: Renamed the existing log reset button to `CLEAR CHAT` inside [ChatInterface.jsx](https://github.com/Mithunvisvesh/jarvis/blob/main/frontend/src/components/ChatInterface.jsx) to only flush the React chat messages array locally without touching the backend session context.
+- **Wipe Session (Backend State)**: Defined a new backend endpoint `POST /api/chat/reset` in [server.py](https://github.com/Mithunvisvesh/jarvis/blob/main/server.py) that wipes the orchestrator session's state dictionary and working memory history. Added a `WIPE SESSION` button in [ChatInterface.jsx](https://github.com/Mithunvisvesh/jarvis/blob/main/frontend/src/components/ChatInterface.jsx) (visible only when Developer Mode is active) that hits this API.
 
 ---
 
@@ -188,10 +188,10 @@ We eliminated dead UI navigation elements from the sidebar to establish a profes
 ### 2. Task 4.2 — View Router for Agenda and Knowledge Base
 We wired a state-driven view manager to display dedicated, full-screen operational workspaces in the central column:
 - **Router State Manager**: Declared `currentView` (`'chat' | 'agenda' | 'knowledge'`) inside `App.jsx` and wired callbacks to `Sidebar.jsx` to swap screens.
-- **Dedicated Agenda View** ([AgendaView.jsx](file:///d:/mithun_files/Personal/5-Day%20AI%20Agents%20Intensive%20Vibe%20Coding%20Course%20With%20Google/Capstone%20Project/jarvis/frontend/src/components/AgendaView.jsx)):
+- **Dedicated Agenda View** ([AgendaView.jsx](https://github.com/Mithunvisvesh/jarvis/blob/main/frontend/src/components/AgendaView.jsx)):
   - Built a dedicated full-page panel displaying scheduled tasks and active reminders in a spacious layout.
   - Retained the ability to toggle tasks as completed, delete tasks, and queue new tasks with a clean slide-out form.
-- **Dedicated Knowledge View** ([KnowledgeView.jsx](file:///d:/mithun_files/Personal/5-Day%20AI%20Agents%20Intensive%20Vibe%20Coding%20Course%20With%20Google/Capstone%20Project/jarvis/frontend/src/components/KnowledgeView.jsx)):
+- **Dedicated Knowledge View** ([KnowledgeView.jsx](https://github.com/Mithunvisvesh/jarvis/blob/main/frontend/src/components/KnowledgeView.jsx)):
   - Built a dedicated full-page panel rendering episodic memory facts.
   - Integrated the character-level LCS query scorer showing confidence match percentages when searching the memory banks.
 - **Diagnostics Retained**: Toggling Developer Mode continues to open the right-sidebar (containing Telemetry Panel, Trace Timeline, Event Logger, and Agenda list) in any active view.
@@ -202,16 +202,16 @@ We wired a state-driven view manager to display dedicated, full-screen operation
 
 ### 1. Task 5.1 — Breathing Animations & Layout Glow Adjustments
 We refined the CSS pulsing keyframes to represent a stable, comforting breathing rhythm rather than aggressive flashing:
-- **CSS Duration Scaling**: Extended the animation cycle from `2s` to `3s` infinite ease-in-out for both `pulse-cyan` and `pulse-pink` classes in [index.css](file:///d:/mithun_files/Personal/5-Day%20AI%20Agents%20Intensive%20Vibe%20Coding%20Course%20With%20Google/Capstone%20Project/jarvis/frontend/src/index.css).
+- **CSS Duration Scaling**: Extended the animation cycle from `2s` to `3s` infinite ease-in-out for both `pulse-cyan` and `pulse-pink` classes in [index.css](https://github.com/Mithunvisvesh/jarvis/blob/main/frontend/src/index.css).
 - **Subtle Shadow Ranges**: Restricted glow offsets to subtle `8px` to `20px` max box-shadow expansions with lower opacity values.
-- **Outer Wrapper Removal**: Removed the `thinking-pulse` classes and dynamic `boxShadow` styling from the top-level outer container wrapper of [ChatInterface.jsx](file:///d:/mithun_files/Personal/5-Day%20AI%20Agents%20Intensive%20Vibe%20Coding%20Course%20With%20Google/Capstone%20Project/jarvis/frontend/src/components/ChatInterface.jsx). The pulse animation resides strictly on the active stepper progress block during deep cognitive routing.
+- **Outer Wrapper Removal**: Removed the `thinking-pulse` classes and dynamic `boxShadow` styling from the top-level outer container wrapper of [ChatInterface.jsx](https://github.com/Mithunvisvesh/jarvis/blob/main/frontend/src/components/ChatInterface.jsx). The pulse animation resides strictly on the active stepper progress block during deep cognitive routing.
 
 ### 2. Task 5.2 — Monospaced System Action Cards
 We implemented distinct UI action blocks in the message threads to display concrete system activities:
-- **Backend Schema Extension**: Added `action_taken: str | None = None` to the `JarvisResponse` model in [server.py](file:///d:/mithun_files/Personal/5-Day%20AI%20Agents%20Intensive%20Vibe%20Coding%20Course%20With%20Google/Capstone%20Project/jarvis/server.py).
-- **Sub-Agent Intent Mapping**: Programmed the `UIFrontendAgent` in [a2a_agents.py](file:///d:/mithun_files/Personal/5-Day%20AI%20Agents%20Intensive%20Vibe%20Coding%20Course%20With%20Google/Capstone%20Project/jarvis/app/a2a_agents.py) to map descriptive text messages for all major intents (telemetry checks, new memories stored, memories recalled with confidence rates, scheduled reminders).
-- **State Capture**: Configured the global React provider context [JarvisContext.jsx](file:///d:/mithun_files/Personal/5-Day%20AI%20Agents%20Intensive%20Vibe%20Coding%20Course%20With%20Google/Capstone%20Project/jarvis/frontend/src/context/JarvisContext.jsx) to preserve `action_taken` metadata in message states.
-- **UI Bubble Cards**: Styled a dedicated monospaced `SYSTEM ACTION EXECUTED` card inside the message bubbles in [ChatInterface.jsx](file:///d:/mithun_files/Personal/5-Day%20AI%20Agents%20Intensive%20Vibe%20Coding%20Course%20With%20Google/Capstone%20Project/jarvis/frontend/src/components/ChatInterface.jsx) featuring a dark background, custom padding, and a `--accent-cyan` left border.
+- **Backend Schema Extension**: Added `action_taken: str | None = None` to the `JarvisResponse` model in [server.py](https://github.com/Mithunvisvesh/jarvis/blob/main/server.py).
+- **Sub-Agent Intent Mapping**: Programmed the `UIFrontendAgent` in [a2a_agents.py](https://github.com/Mithunvisvesh/jarvis/blob/main/app/a2a_agents.py) to map descriptive text messages for all major intents (telemetry checks, new memories stored, memories recalled with confidence rates, scheduled reminders).
+- **State Capture**: Configured the global React provider context [JarvisContext.jsx](https://github.com/Mithunvisvesh/jarvis/blob/main/frontend/src/context/JarvisContext.jsx) to preserve `action_taken` metadata in message states.
+- **UI Bubble Cards**: Styled a dedicated monospaced `SYSTEM ACTION EXECUTED` card inside the message bubbles in [ChatInterface.jsx](https://github.com/Mithunvisvesh/jarvis/blob/main/frontend/src/components/ChatInterface.jsx) featuring a dark background, custom padding, and a `--accent-cyan` left border.
 
 ---
 
@@ -219,14 +219,14 @@ We implemented distinct UI action blocks in the message threads to display concr
 
 ### 1. Task 6.1 — Rewrite the UIFrontendAgent System Prompt
 We shifted the generative tone of the synthesis agent from a system logger to a high-end cognitive assistant:
-- **Stylistic Directives**: Extended the instructions in `UIFrontendAgent.system_prompt` inside [a2a_agents.py](file:///d:/mithun_files/Personal/5-Day%20AI%20Agents%20Intensive%20Vibe%20Coding%20Course%20With%20Google/Capstone%20Project/jarvis/app/a2a_agents.py) to explicitly assert JARVIS's identity, ban third-person machine-speak (e.g. "Operational reminder parsed"), and mandate a calm, conversational tone.
+- **Stylistic Directives**: Extended the instructions in `UIFrontendAgent.system_prompt` inside [a2a_agents.py](https://github.com/Mithunvisvesh/jarvis/blob/main/app/a2a_agents.py) to explicitly assert JARVIS's identity, ban third-person machine-speak (e.g. "Operational reminder parsed"), and mandate a calm, conversational tone.
 - **Few-Shot Injector**: Added 3 distinct few-shot transition examples (Bad/robotic vs Good/conversational) inside the system instructions to enforce clean output formatting.
 - **Conversational Fallbacks**: Updated all hardcoded string formatting fallback pathways (used when Gemini calls are blocked by sandboxed environments/403s) to use natural conversational phrases.
-- **Test Integrity**: Updated assertions in [test_memory_workflow.py](file:///d:/mithun_files/Personal/5-Day%20AI%20Agents%20Intensive%20Vibe%20Coding%20Course%20With%20Google/Capstone%20Project/jarvis/tests/integration/test_memory_workflow.py) and [test_reminder_workflow.py](file:///d:/mithun_files/Personal/5-Day%20AI%20Agents%20Intensive%20Vibe%20Coding%20Course%20With%20Google/Capstone%20Project/jarvis/tests/integration/test_reminder_workflow.py) to accept the conversational patterns while remaining backwards compatible.
+- **Test Integrity**: Updated assertions in [test_memory_workflow.py](https://github.com/Mithunvisvesh/jarvis/blob/main/tests/integration/test_memory_workflow.py) and [test_reminder_workflow.py](https://github.com/Mithunvisvesh/jarvis/blob/main/tests/integration/test_reminder_workflow.py) to accept the conversational patterns while remaining backwards compatible.
 
 ### 2. Task 6.2 — Proactive Next Step Protocol
 We forced the LLM to transition from a reactive state to an active, helpful collaborator:
-- **Anticipatory Suggestions**: Updated the prompt guidelines in [a2a_agents.py](file:///d:/mithun_files/Personal/5-Day%20AI%20Agents%20Intensive%20Vibe%20Coding%20Course%20With%20Google/Capstone%20Project/jarvis/app/a2a_agents.py) to mandate concluding complex queries or completed tasks with a single, highly relevant, and brief (one-sentence) proactive suggestion/follow-up question.
+- **Anticipatory Suggestions**: Updated the prompt guidelines in [a2a_agents.py](https://github.com/Mithunvisvesh/jarvis/blob/main/app/a2a_agents.py) to mandate concluding complex queries or completed tasks with a single, highly relevant, and brief (one-sentence) proactive suggestion/follow-up question.
 - **Conversational Fallbacks Integration**: Incorporated proactive follow-up suggestions directly into the local conversational backup fallbacks (e.g. asking to set recurring daily alerts on reminders or monitoring CPU spikes on diagnostics).
 
 ---
@@ -235,12 +235,12 @@ We forced the LLM to transition from a reactive state to an active, helpful coll
 
 ### 1. Task 7.1 — Core User Context Injection
 We hardcoded the essential reality of the user into the system so JARVIS possesses innate, unprompted knowledge of its creator and current primary objectives:
-- **Dedicated Configuration**: Created [config.py](file:///d:/mithun_files/Personal/5-Day%20AI%20Agents%20Intensive%20Vibe%20Coding%20Course%20With%20Google/Capstone%20Project/jarvis/app/config.py) declaring the `CORE_USER_CONTEXT` constant containing Mithun's academic details (4th-semester B.Tech CSE student), focus courses (OS, Computer Architecture), and critical objective (Delivering the JARVIS Capstone project by July 6).
-- **Dynamic Prompt Seeding**: Dynamically imported and injected the `CORE_USER_CONTEXT` string into the system instructions of `OrchestratorAgent` and the `system_prompt` instruction parameter of `UIFrontendAgent` on initialization inside [a2a_agents.py](file:///d:/mithun_files/Personal/5-Day%20AI%20Agents%20Intensive%20Vibe%20Coding%20Course%20With%20Google/Capstone%20Project/jarvis/app/a2a_agents.py).
+- **Dedicated Configuration**: Created [config.py](https://github.com/Mithunvisvesh/jarvis/blob/main/app/config.py) declaring the `CORE_USER_CONTEXT` constant containing Mithun's academic details (4th-semester B.Tech CSE student), focus courses (OS, Computer Architecture), and critical objective (Delivering the JARVIS Capstone project by July 6).
+- **Dynamic Prompt Seeding**: Dynamically imported and injected the `CORE_USER_CONTEXT` string into the system instructions of `OrchestratorAgent` and the `system_prompt` instruction parameter of `UIFrontendAgent` on initialization inside [a2a_agents.py](https://github.com/Mithunvisvesh/jarvis/blob/main/app/a2a_agents.py).
 
 ### 2. Task 7.2 — Pre-load the Episodic Memory Bank
 We populated the local memory database with authentic, high-quality engineering and academic history payloads:
-- **Memory File Seeding**: Populated [memory.json](file:///d:/mithun_files/Personal/5-Day%20AI%20Agents%20Intensive%20Vibe%20Coding%20Course%20With%20Google/Capstone%20Project/jarvis/data/memory.json) with 8 authentic historical facts, including implementations of the Agent2Agent protocol and MCP stdio subprocess, creation of the ShieldGig parametric insurance platform, and Lynx Eye digital marketing internships.
+- **Memory File Seeding**: Populated [memory.json](https://github.com/Mithunvisvesh/jarvis/blob/main/data/memory.json) with 8 authentic historical facts, including implementations of the Agent2Agent protocol and MCP stdio subprocess, creation of the ShieldGig parametric insurance platform, and Lynx Eye digital marketing internships.
 - **Immersion Enhancement**: Removed generic max/dog placeholders in the default database, replacing them with professional, Capstone-ready engineering telemetry and project parameters.
 
 ---
@@ -249,10 +249,28 @@ We populated the local memory database with authentic, high-quality engineering 
 
 ### 1. Task 8.1 — Conversational Fallbacks for Tool Failures
 We wrapped tool executions to handle environmental glitches and connection errors gracefully:
-- **Exception Catching**: Modified `BackgroundDataAgent.handle_intent` in [a2a_agents.py](file:///d:/mithun_files/Personal/5-Day%20AI%20Agents%20Intensive%20Vibe%20Coding%20Course%20With%20Google/Capstone%20Project/jarvis/app/a2a_agents.py) to wrap all tool/database calls in try-except blocks. If an exception occurs, it publishes a `TOOL_FAILURE` event on the bus and sets the intent parameter to `"TOOL_FAILURE"`.
-- **System Error Handler**: Implemented a new `"TOOL_FAILURE"` routing branch in `UIFrontendAgent.handle_data` in [a2a_agents.py](file:///d:/mithun_files/Personal/5-Day%20AI%20Agents%20Intensive%20Vibe%20Coding%20Course%20With%20Google/Capstone%20Project/jarvis/app/a2a_agents.py). It queries Gemini to write a calm, reassuring conversational apology explaining that we are having connection issues but are online and ready to assist.
+- **Exception Catching**: Modified `BackgroundDataAgent.handle_intent` in [a2a_agents.py](https://github.com/Mithunvisvesh/jarvis/blob/main/app/a2a_agents.py) to wrap all tool/database calls in try-except blocks. If an exception occurs, it publishes a `TOOL_FAILURE` event on the bus and sets the intent parameter to `"TOOL_FAILURE"`.
+- **System Error Handler**: Implemented a new `"TOOL_FAILURE"` routing branch in `UIFrontendAgent.handle_data` in [a2a_agents.py](https://github.com/Mithunvisvesh/jarvis/blob/main/app/a2a_agents.py). It queries Gemini to write a calm, reassuring conversational apology explaining that we are having connection issues but are online and ready to assist.
 - **Robust Apology Fallback**: Hardcoded a conversational default apology if Gemini calls are blocked by credentials or sandbox limitations: *"I'm having trouble connecting to the system diagnostics at the moment, but I am still online and ready to assist with your agenda."*
 
 
 
 
+
+## 🩹 Triage Day Refactorings & Cleanups
+
+We performed a critical clean-up and resolved circular import issues to finalize production readiness:
+
+### 1. Circular Import & MCP Subprocess Spawning Resolution
+- **Removed Imports from `app/__init__.py`**: We stripped all imports from [app/__init__.py](https://github.com/Mithunvisvesh/jarvis/blob/main/app/__init__.py), turning it into a simple package marker comment. This avoids importing the `app` instance (or workflow graph) during submodule initialization, which was causing circular dependencies when other modules spawned the MCP subprocess.
+- **Direct Imports in `server.py`**: Updated [server.py](https://github.com/Mithunvisvesh/jarvis/blob/main/server.py) to import `adk_app` and `workflow_app` directly from [app/agent.py](https://github.com/Mithunvisvesh/jarvis/blob/main/app/agent.py). This prevents the transport layer subprocess from crashing.
+
+### 2. Personalized & Dynamic Welcome Greeting
+- **Dynamic Header message**: Integrated a helper `getWelcomeMessage(count)` in [JarvisContext.jsx](https://github.com/Mithunvisvesh/jarvis/blob/main/frontend/src/context/JarvisContext.jsx).
+- **Academic Context & Target Deadline**: The message pulls the user's name ("Mithun") and dynamically computes the remaining days until the capstone deadline (July 6, 2026) using the client system's time.
+- **Live Agenda Count**: The startup message now reads the number of active items in the user's reminders list once loaded, ensuring a complete personal assistant layout.
+
+### 3. Frontend Cleanup & Dead File Deletion
+- **Label Alignment**: Changed the alert box label from `"TEMPORAL ALERTS IN BUFFER DETECTED"` to `"DUE REMINDERS"` in [ChatInterface.jsx](https://github.com/Mithunvisvesh/jarvis/blob/main/frontend/src/components/ChatInterface.jsx).
+- **Dead Component Deletion**: Deleted the files `ActivityTimeline.jsx`, `TraceViewer.jsx`, and `StatusBar.jsx` to clean up old components, and updated [App.jsx](https://github.com/Mithunvisvesh/jarvis/blob/main/frontend/src/App.jsx) to remove their imports and usages.
+- **Assets Cleanup**: Removed unused SVG placeholders `react.svg` and `vite.svg` from the assets folder.

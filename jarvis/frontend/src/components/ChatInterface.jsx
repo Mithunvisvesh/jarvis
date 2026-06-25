@@ -339,7 +339,7 @@ export default function ChatInterface() {
             letterSpacing: '1px'
           }}>
             <ShieldAlert size={14} />
-            <span>TEMPORAL ALERTS IN BUFFER DETECTED</span>
+            <span>DUE REMINDERS</span>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
             {dueReminders.map(rem => (

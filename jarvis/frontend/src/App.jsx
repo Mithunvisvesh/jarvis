@@ -5,9 +5,7 @@ import ChatInterface from './components/ChatInterface';
 import TelemetryPanel from './components/TelemetryPanel';
 import Agenda from './components/Agenda';
 import MemoryViewer from './components/MemoryViewer';
-import ActivityTimeline from './components/ActivityTimeline';
 import DeveloperPanel from './components/DeveloperPanel';
-import StatusBar from './components/StatusBar';
 import AgendaView from './components/AgendaView';
 import KnowledgeView from './components/KnowledgeView';
 
@@ -78,7 +76,7 @@ function Dashboard() {
               gap: '4px',
               flexShrink: 0
             }}>
-              {['system', 'memory', 'logs', 'traces'].map(tab => (
+              {['system', 'memory', 'traces'].map(tab => (
                 <button
                   key={tab}
                   onClick={() => setActiveRightTab(tab)}
@@ -118,14 +116,11 @@ function Dashboard() {
                 </div>
               )}
               {activeRightTab === 'memory' && <MemoryViewer />}
-              {activeRightTab === 'logs' && <ActivityTimeline />}
               {activeRightTab === 'traces' && <DeveloperPanel />}
             </div>
           </div>
         )}
       </div>
-
-      <StatusBar />
     </div>
   );
 }
