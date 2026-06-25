@@ -77,38 +77,64 @@ app = App(
 
 @node(name="orchestrator")
 def orchestrator_node(ctx, node_input) -> Event:
-    """Classifies the prompt intent into SYSTEM, REMINDER, MEMORY_STORE, MEMORY_RECALL, or CHAT."""
+    """Classifies the prompt intent using LLM reasoning."""
+    import re
     text = ""
     if isinstance(node_input, types.Content):
         text = extract_text_from_content(node_input)
     elif isinstance(node_input, str):
         text = node_input
 
-    text_lower = text.lower()
-    
-    # Precedence-based intent classification
-    is_formatting_or_injection = any(k in text_lower for k in ["ignore previous", "format the response", "format as", "raw xml", "raw json"])
-    is_mission = any(k in text_lower for k in ["finish my", "complete my", "help me finish", "help me with my", "achieve my", "goal:", "mission:", "create a mission", "new mission", "add mission"]) or ("help me" in text_lower and "capstone" in text_lower)
-    is_reminder = any(k in text_lower for k in ["remind", "schedule", "meeting", "walk", "medicine"])
-    has_recall_question = any(k in text_lower for k in ["what is", "when is", "who is", "where is", "what was", "when was", "where was", "who was", "who did", "where did", "what did", "when did"])
-    has_personal_indicator = any(k in text_lower for k in ["my", "was", "deadline", "remember", "recall", " i "])
-    is_memory_recall = ("do you remember" in text_lower) or ("what do you know about" in text_lower) or (has_recall_question and has_personal_indicator)
-    is_memory_store = any(k in text_lower for k in ["remember that", "remember my", "store that", "store my", "save the fact", "remember"]) or (text_lower.startswith("my ") and " is " in text_lower)
-    is_system = any(k in text_lower for k in ["system", "telemetry", "cpu", "ram", "gpu", "diagnostics"])
-
     intent = "CHAT"
-    if is_formatting_or_injection:
+    try:
+        client = Client()
+        response = client.models.generate_content(
+            model="gemini-2.5-flash",
+            contents=text,
+            config=types.GenerateContentConfig(
+                system_instruction=(
+                    "Classify the following user input into exactly one of: "
+                    "SYSTEM, REMINDER, MEMORY_STORE, MEMORY_RECALL, MISSION, CHAT. "
+                    "Respond with ONLY the classification word."
+                )
+            )
+        )
+        if response.text:
+            classification = response.text.strip().upper()
+            valid_intents = {"SYSTEM", "REMINDER", "MEMORY_STORE", "MEMORY_RECALL", "MISSION", "CHAT"}
+            classification_clean = re.sub(r"[^\w]", "", classification)
+            if classification_clean in valid_intents:
+                intent = classification_clean
+            else:
+                for val in valid_intents:
+                    if val in classification:
+                        intent = val
+                        break
+    except Exception:
+        # Fallback to key-word matching if LLM fails (e.g. rate limit, credential issue)
+        text_lower = text.lower()
+        is_formatting_or_injection = any(k in text_lower for k in ["ignore previous", "format the response", "format as", "raw xml", "raw json"])
+        is_mission = any(k in text_lower for k in ["finish my", "complete my", "help me finish", "help me with my", "achieve my", "goal:", "mission:", "create a mission", "new mission", "add mission"]) or ("help me" in text_lower and "capstone" in text_lower)
+        is_reminder = any(k in text_lower for k in ["remind", "schedule", "meeting", "walk", "medicine"])
+        has_recall_question = any(k in text_lower for k in ["what is", "when is", "who is", "where is", "what was", "when was", "where was", "who was", "who did", "where did", "what did", "when did"])
+        has_personal_indicator = any(k in text_lower for k in ["my", "was", "deadline", "remember", "recall", " i "])
+        is_memory_recall = ("do you remember" in text_lower) or ("what do you know about" in text_lower) or (has_recall_question and has_personal_indicator)
+        is_memory_store = any(k in text_lower for k in ["remember that", "remember my", "store that", "store my", "save the fact", "remember"]) or (text_lower.startswith("my ") and " is " in text_lower)
+        is_system = any(k in text_lower for k in ["system", "telemetry", "cpu", "ram", "gpu", "diagnostics"])
+
         intent = "CHAT"
-    elif is_mission:
-        intent = "MISSION"
-    elif is_reminder:
-        intent = "REMINDER"
-    elif is_memory_recall:
-        intent = "MEMORY_RECALL"
-    elif is_memory_store:
-        intent = "MEMORY_STORE"
-    elif is_system:
-        intent = "SYSTEM"
+        if is_formatting_or_injection:
+            intent = "CHAT"
+        elif is_mission:
+            intent = "MISSION"
+        elif is_reminder:
+            intent = "REMINDER"
+        elif is_memory_recall:
+            intent = "MEMORY_RECALL"
+        elif is_memory_store:
+            intent = "MEMORY_STORE"
+        elif is_system:
+            intent = "SYSTEM"
 
     ctx.state["route"] = intent
     ctx.state["prompt"] = text
