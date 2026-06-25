@@ -127,17 +127,37 @@ export default function KnowledgeView() {
       }}>
         {sortedMemories.length === 0 ? (
           <div style={{
-            fontSize: '13px',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '80px 24px',
             color: 'var(--text-secondary)',
-            textAlign: 'center',
-            padding: '60px 0',
-            fontStyle: 'italic',
             fontFamily: 'var(--font-mono)',
+            textAlign: 'center',
+            gap: '16px',
             border: '1px dashed var(--border-muted)',
-            borderRadius: '6px',
-            background: 'rgba(0,0,0,0.15)'
+            borderRadius: '8px',
+            background: 'rgba(10, 14, 24, 0.25)',
+            opacity: 0.85
           }}>
-            [MEMORY_BANKS_VACANT_OR_NO_RESULTS]
+            <Brain size={36} style={{ color: 'var(--accent-green)', filter: 'drop-shadow(0 0 8px rgba(0, 255, 159, 0.35))' }} />
+            <div style={{ fontSize: '13px', fontWeight: 'bold', color: 'var(--text-primary)', letterSpacing: '1px' }}>
+              KNOWLEDGE CORE VACANT
+            </div>
+            <div style={{ fontSize: '11px', maxWidth: '380px', lineHeight: '1.6', color: 'var(--text-secondary)' }}>
+              No long-term memories have been indexed yet. Speak with JARVIS to store key details or facts, which are parsed and persisted automatically.
+            </div>
+            <div style={{
+              fontSize: '10px',
+              color: 'var(--text-dark)',
+              borderTop: '1px solid var(--border-muted)',
+              paddingTop: '12px',
+              width: '100%',
+              maxWidth: '300px'
+            }}>
+              Try: "Remember that the user is Mithun" or "Remember that my capstone project deadline is July 6"
+            </div>
           </div>
         ) : (
           sortedMemories.map((mem) => {

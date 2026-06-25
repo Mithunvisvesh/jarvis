@@ -203,17 +203,37 @@ export default function AgendaView() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
           {reminders.length === 0 ? (
             <div style={{
-              fontSize: '13px',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '80px 24px',
               color: 'var(--text-secondary)',
-              textAlign: 'center',
-              padding: '60px 0',
-              fontStyle: 'italic',
               fontFamily: 'var(--font-mono)',
+              textAlign: 'center',
+              gap: '16px',
               border: '1px dashed var(--border-muted)',
-              borderRadius: '6px',
-              background: 'rgba(0,0,0,0.15)'
+              borderRadius: '8px',
+              background: 'rgba(10, 14, 24, 0.25)',
+              opacity: 0.85
             }}>
-              [NO_ACTIVE_TASKS_IN_QUEUE]
+              <Calendar size={36} style={{ color: 'var(--accent-cyan)', filter: 'drop-shadow(0 0 8px rgba(0, 212, 255, 0.35))' }} />
+              <div style={{ fontSize: '13px', fontWeight: 'bold', color: 'var(--text-primary)', letterSpacing: '1px' }}>
+                NO TEMPORAL OPERATIONS DETECTED
+              </div>
+              <div style={{ fontSize: '11px', maxWidth: '380px', lineHeight: '1.6', color: 'var(--text-secondary)' }}>
+                Your schedule queue is currently empty. Initialize a new task using the <strong style={{ color: 'var(--accent-cyan)' }}>NEW TASK</strong> button above, or request scheduling in natural language.
+              </div>
+              <div style={{
+                fontSize: '10px',
+                color: 'var(--text-dark)',
+                borderTop: '1px solid var(--border-muted)',
+                paddingTop: '12px',
+                width: '100%',
+                maxWidth: '300px'
+              }}>
+                Try: "Remind me to finish slide deck tomorrow at 9:00 AM"
+              </div>
             </div>
           ) : (
             reminders.map((rem) => (

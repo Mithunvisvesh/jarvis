@@ -17,7 +17,7 @@ graph TD
     
     %% Nodes
     A["React Frontend (UI)"]:::React
-    B["FastAPI IPC Bridge (Backend)"]:::FastAPI
+    B["FastAPI Backend (app/agent.py)"]:::FastAPI
     C["Event Bus (app/event_bus.py)"]:::FastAPI
     D["MCP Server (tools/mcp_server.py)"]:::FastAPI
     E["Reminders Database (reminders.json)"]:::Storage
@@ -28,10 +28,10 @@ graph TD
     A -->|POST /api/chat/stream| B
     A -->|GET /api/traces| B
     B -->|Publish Event| C
-    B -->|RPC Requests| D
-    D -->|Write/Read Reminders| E
-    D -->|Write/Read Memories| F
+    B -->|Write Reminders & Memories| E & F
     B -->|Write Traces| G
+    B -->|JSON-RPC via Stdio| D
+    D -->|Read Reminders & Memories| E & F
 ```
 
 ---
@@ -99,7 +99,8 @@ flowchart LR
     subgraph System Functions
         E["get_system_stats"]:::Tool
         F["get_due_reminders"]:::Tool
-        G["get_memories / add_memory"]:::Tool
+        G["get_memories"]:::Tool
+        H["get_reminders"]:::Tool
     end
 
     A -->|call_mcp_tool| B
@@ -108,4 +109,17 @@ flowchart LR
     D -->|execute| E
     D -->|execute| F
     D -->|execute| G
+    D -->|execute| H
 ```
+
+---
+
+## 4. In-Process Agent-to-Agent (A2A) Equivalence
+
+In the demonstration and prototype runtime environment, the sub-agents (`BackgroundDataAgent` and `UIFrontendAgent`) and database write functions are loaded and executed in-process within the FastAPI web server thread rather than as separate, network-isolated microservices. 
+
+This model is **architecturally equivalent** to a distributed multi-service deployment for the following reasons:
+1. **Decoupled Messaging Contracts**: Sub-agents do not make direct function calls to each other. They communicate solely by publishing and subscribing to strongly-typed event schemas (`AgentEvent`) over a shared asynchronous Event Bus (`global_event_bus`).
+2. **Schema & Contract Rigidity**: The event payloads and parameters are fully validated using Pydantic models. Transitioning from in-process subscriptions to distributed message queues (e.g., RabbitMQ, Google Cloud Pub/Sub, or Celery) would require zero changes to agent reasoning loops or data schemas; only the event bus transport layer would change.
+3. **Cognitive Boundary Isolation**: Individual agents maintain separate cognitive domains, instruction sets, and API limits. `BackgroundDataAgent` specializes in tool calling and database interaction, while `UIFrontendAgent` specializes in conversational synthesis and response serialization.
+4. **Demonstration Pragmatism**: Running the agent mesh in-process eliminates network latency, container orchestration overhead, and credentials management issues during local developer execution. This yields highly responsive SSE stream feedback in the UI while retaining a clean, decoupled microservices-ready structure.

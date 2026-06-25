@@ -9,6 +9,7 @@ import DeveloperPanel from './components/DeveloperPanel';
 import AgendaView from './components/AgendaView';
 import KnowledgeView from './components/KnowledgeView';
 import MissionsView from './components/MissionsView';
+import StatusBar from './components/StatusBar';
 
 function Dashboard() {
   const [activeRightTab, setActiveRightTab] = useState('system'); // 'system' | 'memory' | 'logs'
@@ -123,6 +124,7 @@ function Dashboard() {
           </div>
         )}
       </div>
+      <StatusBar />
     </div>
   );
 }

@@ -417,6 +417,7 @@ export default function ChatInterface() {
           return (
             <div 
               key={msg.id}
+              className="message-slide-in"
               style={{
                 display: 'flex',
                 flexDirection: 'column',
@@ -453,16 +454,16 @@ export default function ChatInterface() {
                   <div style={{
                     fontFamily: 'var(--font-mono)',
                     fontSize: '11px',
-                    backgroundColor: 'rgba(0, 0, 0, 0.35)',
-                    borderLeft: '3px solid var(--accent-cyan)',
+                    backgroundColor: 'rgba(0, 0, 0, 0.25)',
+                    borderLeft: '2px solid rgba(0, 212, 255, 0.5)',
                     padding: '8px 12px',
                     marginBottom: '12px',
                     borderRadius: '0 4px 4px 0',
-                    color: 'rgba(255, 255, 255, 0.9)',
+                    color: 'rgba(255, 255, 255, 0.8)',
                     letterSpacing: '0.5px'
                   }}>
-                    <span style={{ color: 'var(--accent-cyan)', fontWeight: 'bold', display: 'block', marginBottom: '2px', fontSize: '9px' }}>
-                      [SYSTEM ACTION EXECUTED]
+                    <span style={{ color: 'rgba(0, 212, 255, 0.85)', fontWeight: 'bold', display: 'block', marginBottom: '4px', fontSize: '9px', letterSpacing: '1px' }}>
+                      ACTION PROFILE // PROTOCOL LOG
                     </span>
                     {msg.action_taken}
                   </div>

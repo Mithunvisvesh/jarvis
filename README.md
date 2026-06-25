@@ -2,8 +2,8 @@
 
 [![Release](https://img.shields.io/badge/Release-v1.0.0-blue.svg)](RELEASE_NOTES_v1.0.0.md)
 [![Build Status](https://img.shields.io/badge/Build-Passing-brightgreen.svg)]()
-[![Tests](https://img.shields.io/badge/Tests-25%2F25%20Passed-brightgreen.svg)]()
-[![Evaluations](https://img.shields.io/badge/Evaluations-50%2F50%20Passed-brightgreen.svg)]()
+[![Tests](https://img.shields.io/badge/Tests-Passing-brightgreen.svg)]()
+[![Evaluations](https://img.shields.io/badge/Evaluations-Passing-brightgreen.svg)]()
 [![License](https://img.shields.io/badge/License-Apache%202.0-orange.svg)]()
 
 JARVIS is an AI-powered operating companion built with the **Google ADK 2.0** framework. It features asynchronous **Agent-to-Agent (A2A) collaboration**, standard **Model Context Protocol (MCP) tool routing**, persistent memory, temporal reminders, system telemetry monitoring, live Server-Sent Events (SSE) streaming, and full production observability.
@@ -38,7 +38,7 @@ graph TD
     
     %% Nodes
     A["React Frontend (UI)"]:::React
-    B["FastAPI IPC Bridge (Backend)"]:::FastAPI
+    B["FastAPI Backend (app/agent.py)"]:::FastAPI
     C["Event Bus (app/event_bus.py)"]:::FastAPI
     D["MCP Server (tools/mcp_server.py)"]:::FastAPI
     E["Reminders Database (reminders.json)"]:::Storage
@@ -49,10 +49,10 @@ graph TD
     A -->|POST /api/chat/stream| B
     A -->|GET /api/traces| B
     B -->|Publish Event| C
-    B -->|RPC Requests| D
-    D -->|Write/Read Reminders| E
-    D -->|Write/Read Memories| F
+    B -->|Write Reminders & Memories| E & F
     B -->|Write Traces| G
+    B -->|JSON-RPC via Stdio| D
+    D -->|Read Reminders & Memories| E & F
 ```
 
 ---
@@ -73,18 +73,20 @@ graph TD
 ### Prerequisites
 Before running, ensure you have:
 1. Python 3.13+ installed.
-2. Node.js (v18+) and npm installed.
-3. Google Gemini API Key configured.
+2. `uv` (Fast Python Package Manager) installed. If you don't have it, install via pip: `pip install uv`.
+3. Node.js (v18+) and npm installed.
+4. Google Gemini API Key configured.
 
 ---
 
 ### Step 1: Launch Backend Server
-1. Clone the repository and navigate to the project directory:
+1. Clone the repository and navigate to the root directory (where this README is located):
    ```bash
    cd jarvis
    ```
-2. Install Python dependencies and sync virtual environment:
+2. Navigate into the backend application folder and install Python dependencies:
    ```bash
+   cd jarvis
    uv sync
    ```
 3. Set your Gemini API key:
@@ -103,9 +105,9 @@ Before running, ensure you have:
 ---
 
 ### Step 2: Launch React Frontend
-1. Navigate to the frontend directory:
+1. Open a new terminal window at the repository root folder, then navigate to the frontend directory:
    ```bash
-   cd frontend
+   cd jarvis/frontend
    ```
 2. Install npm packages:
    ```bash
@@ -113,18 +115,26 @@ Before running, ensure you have:
    ```
 3. Run the Vite development server:
    ```bash
-   npm.cmd run dev
+   npm run dev
    ```
    Open `http://localhost:5173/` in your browser.
 
 ---
 
-## 📊 Evaluation & Verification Results
+## 📊 Feature Matrix & System Status
 
-JARVIS implements a rigorous programmatic testing framework:
-- **Pytest Suite**: **25 / 25 Tests Passed** (`uv run pytest`) verifying memory, reminder parsing, telemetry routing, and integration controllers.
-- **Evaluation Dataset**: **50 / 50 Evaluation Prompts Passed** (`uv run python run_evals.py`) testing mixed intent, emojis, Unicode characters, formatting, and adversarial injections.
-- **Overall Success Rate**: **100%** schema and routing accuracy.
+The table below outlines the current implementation status, verification mechanism, and readiness level for each core system capability:
+
+| Feature Area | Description | Implementation Status | Verification Method |
+| --- | --- | --- | --- |
+| **Agent-to-Agent Mesh** | Asynchronous routing & event collaboration between orchestrator and specialized nodes | **Operational (In-process)** | Integration tests (`test_agent.py`) |
+| **MCP Tool Integration** | Standard JSON-RPC 2.0 stdio subprocess client/server tool isolation | **Operational (Separate Process)** | Stdio client tests (`test_phase4.py`) |
+| **System Diagnostics** | Real-time telemetry monitoring (CPU, RAM, Disk, Temp) | **Operational (Simulated/Live)** | Telemetry unit tests (`test_telemetry.py`) |
+| **Episodic Memory** | Fact extraction and semantic recall with SequenceMatcher filtering | **Operational** | Memory store tests (`test_memory.py`) |
+| **Agenda & Reminders** | Natural language parsing, due polling, and interactive alert UI | **Operational** | Reminder store tests (`test_reminders.py`) |
+| **Missions System** | High-level goal checklist deconstruction and progress tracking | **Operational** | Manual UI walkthrough & storage persistence |
+| **SSE Event Stream** | Live backend event updates and streaming chunks to UI | **Operational** | SSE streaming integration tests |
+| **Developer Diagnostics** | Full-screen trace timelines, activity logs, and telemetry panels | **Operational** | Developer toggle visual verification |
 
 ---
 
