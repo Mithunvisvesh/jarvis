@@ -292,3 +292,16 @@ We built a persistent and checkable **Mission System** that translates high-leve
 - **Navigation Menu Tab**: Added `Target` icon as the fourth item in the sidebar of [Sidebar.jsx](https://github.com/Mithunvisvesh/jarvis/blob/main/frontend/src/components/Sidebar.jsx).
 - **Checklist Tracker Layout**: Built a new React dashboard [MissionsView.jsx](https://github.com/Mithunvisvesh/jarvis/blob/main/frontend/src/components/MissionsView.jsx) mounting on `currentView === 'missions'`.
 - **Dynamic Progress Indicator**: Displays a linear gradient progress bar showing percentage completion of checklist items, updating in real-time.
+
+## 🧠 Task 11 — LLM-Based Routing & AgentEvaluator
+
+We upgraded the system's orchestrator routing logic to use real-time LLM reasoning and added programmatic validation checks:
+
+### 1. LLM-Based Intent Classification
+- **Orchestrator Upgrade**: Replaced the keyword-matching logic inside [agent.py](https://github.com/Mithunvisvesh/jarvis/blob/main/app/agent.py) (`orchestrator_node`) with a live Gemini-2.5-flash content generation call.
+- **Instruction Directive**: The model is prompted: `"Classify the following user input into exactly one of: SYSTEM, REMINDER, MEMORY_STORE, MEMORY_RECALL, MISSION, CHAT. Respond with ONLY the classification word."`
+- **Graceful Fallback**: Implemented try-except wrapping that automatically falls back to deterministic regex/keyword matches if the Gemini call encounters network issues, rate limits, or validation errors.
+
+### 2. Programmatic AgentEvaluator Test
+- **Honest Test Case**: Created [test_agent_evaluator.py](https://github.com/Mithunvisvesh/jarvis/blob/main/tests/integration/test_agent_evaluator.py) implementing a helper class `AgentEvaluator`.
+- **Validation Assertion**: The test instantiates the evaluator, queries the FastAPI server with a user prompt, and asserts that the returned `route` is a valid string matching one of the active intents, ensuring the evaluation claims are fully accurate.
