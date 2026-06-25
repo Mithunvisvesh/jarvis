@@ -15,7 +15,7 @@ from google.genai import types
 from app.agent import app as adk_app, workflow_app
 from app.event_bus import global_event_bus
 from app.trace_store import trace_manager, load_traces
-from app.memory_store import load_memory, delete_fact
+from app.memory_store import load_memory, delete_fact, load_missions, add_mission, toggle_mission_task, delete_mission, derive_mission_title
 from app.reminder_store import load_reminders, add_reminder, update_reminder, delete_reminder, get_due_reminders
 from tools.mcp_server import handle_mcp_request
 from google.adk.sessions import InMemorySessionService
@@ -43,6 +43,9 @@ class JarvisRequest(BaseModel):
     prompt: str
     user_id: str = "default_user"
     session_id: str = "default_session"
+
+class MissionCreateRequest(BaseModel):
+    goal: str
 
 class JarvisResponse(BaseModel):
     status: str
@@ -452,6 +455,50 @@ async def delete_memory_endpoint(fact_id: str):
     if not success:
         raise HTTPException(status_code=404, detail="Memory fact not found")
     return {"status": "success", "message": "Memory deleted successfully"}
+
+# --- MISSIONS API ENDPOINTS ---
+@app.get("/api/missions")
+async def get_missions_endpoint():
+    return load_missions()
+
+@app.post("/api/missions")
+async def create_mission_endpoint(req: MissionCreateRequest):
+    goal = req.goal
+    title = derive_mission_title(goal)
+    try:
+        from google.genai import Client
+        client = Client()
+        response = client.models.generate_content(
+            model="gemini-2.5-flash",
+            contents=f"Break down this goal into 5–7 concrete tasks: '{goal}'. Return a JSON array of task strings.",
+            config=types.GenerateContentConfig(
+                response_mime_type="application/json"
+            )
+        )
+        tasks_text = response.text.strip() if response.text else "[]"
+        import json
+        tasks_list = json.loads(tasks_text)
+        if not isinstance(tasks_list, list):
+            tasks_list = [tasks_text]
+    except Exception:
+        tasks_list = [f"Understand goal: {goal}", "Analyze requirements", "Plan implementation details", "Execute actions", "Verify outcomes"]
+    
+    mission = add_mission(title, goal, tasks_list)
+    return mission
+
+@app.post("/api/missions/{mission_id}/tasks/{task_id}/toggle")
+async def toggle_mission_task_endpoint(mission_id: str, task_id: str):
+    success = toggle_mission_task(mission_id, task_id)
+    if not success:
+        raise HTTPException(status_code=404, detail="Mission or task not found")
+    return {"status": "success", "message": "Task status toggled successfully"}
+
+@app.delete("/api/missions/{mission_id}")
+async def delete_mission_endpoint(mission_id: str):
+    success = delete_mission(mission_id)
+    if not success:
+        raise HTTPException(status_code=404, detail="Mission not found")
+    return {"status": "success", "message": "Mission deleted successfully"}
 
 @app.get("/api/reminders/due")
 async def get_due_reminders_endpoint(current_dt: str | None = Query(None)):

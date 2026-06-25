@@ -274,3 +274,21 @@ We performed a critical clean-up and resolved circular import issues to finalize
 - **Label Alignment**: Changed the alert box label from `"TEMPORAL ALERTS IN BUFFER DETECTED"` to `"DUE REMINDERS"` in [ChatInterface.jsx](https://github.com/Mithunvisvesh/jarvis/blob/main/frontend/src/components/ChatInterface.jsx).
 - **Dead Component Deletion**: Deleted the files `ActivityTimeline.jsx`, `TraceViewer.jsx`, and `StatusBar.jsx` to clean up old components, and updated [App.jsx](https://github.com/Mithunvisvesh/jarvis/blob/main/frontend/src/App.jsx) to remove their imports and usages.
 - **Assets Cleanup**: Removed unused SVG placeholders `react.svg` and `vite.svg` from the assets folder.
+
+## 🎯 Task 10 — The Mission System
+
+We built a persistent and checkable **Mission System** that translates high-level user statements of intent into structured task checklists:
+
+### 1. Persistent Storage Integration
+- Stored missions directly inside [memory.json](https://github.com/Mithunvisvesh/jarvis/blob/main/data/memory.json) under a dedicated `"missions"` key.
+- Implemented helper methods in [memory_store.py](https://github.com/Mithunvisvesh/jarvis/blob/main/app/memory_store.py) (`load_missions`, `save_missions`, `add_mission`, `toggle_mission_task`, `delete_mission`) to load, modify, and persist the mission records across restarts.
+
+### 2. Goal-to-Task Deconstruction Pipeline
+- **Intent Routing**: Configured the workflow graph [agent.py](https://github.com/Mithunvisvesh/jarvis/blob/main/app/agent.py) (`orchestrator_node`) to detect goal-oriented sentences (e.g. *"finish my"*, *"complete my"*, *"achieve my"*, *"goal:"*, *"mission:"* or *"help me finish my capstone"*) and direct them to the `"MISSION"` intent channel.
+- **Task Deconstruction**: Spawns a Gemini API call inside [a2a_agents.py](https://github.com/Mithunvisvesh/jarvis/blob/main/app/a2a_agents.py) (`BackgroundDataAgent`) utilizing the prompt: `"Break down this goal into 5–7 concrete tasks: '{goal}'. Return a JSON array of task strings."` to parse the tasks list dynamically.
+- **Conversational Confirmation**: The `UIFrontendAgent` synthesizes a warm reply presenting the numbered tasks, prompting next steps, and confirming they are tracked in the Missions Center.
+
+### 3. Sidebar Missions Center Panel
+- **Navigation Menu Tab**: Added `Target` icon as the fourth item in the sidebar of [Sidebar.jsx](https://github.com/Mithunvisvesh/jarvis/blob/main/frontend/src/components/Sidebar.jsx).
+- **Checklist Tracker Layout**: Built a new React dashboard [MissionsView.jsx](https://github.com/Mithunvisvesh/jarvis/blob/main/frontend/src/components/MissionsView.jsx) mounting on `currentView === 'missions'`.
+- **Dynamic Progress Indicator**: Displays a linear gradient progress bar showing percentage completion of checklist items, updating in real-time.

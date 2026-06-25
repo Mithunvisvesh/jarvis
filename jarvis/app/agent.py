@@ -88,6 +88,7 @@ def orchestrator_node(ctx, node_input) -> Event:
     
     # Precedence-based intent classification
     is_formatting_or_injection = any(k in text_lower for k in ["ignore previous", "format the response", "format as", "raw xml", "raw json"])
+    is_mission = any(k in text_lower for k in ["finish my", "complete my", "help me finish", "help me with my", "achieve my", "goal:", "mission:", "create a mission", "new mission", "add mission"]) or ("help me" in text_lower and "capstone" in text_lower)
     is_reminder = any(k in text_lower for k in ["remind", "schedule", "meeting", "walk", "medicine"])
     has_recall_question = any(k in text_lower for k in ["what is", "when is", "who is", "where is", "what was", "when was", "where was", "who was", "who did", "where did", "what did", "when did"])
     has_personal_indicator = any(k in text_lower for k in ["my", "was", "deadline", "remember", "recall", " i "])
@@ -98,6 +99,8 @@ def orchestrator_node(ctx, node_input) -> Event:
     intent = "CHAT"
     if is_formatting_or_injection:
         intent = "CHAT"
+    elif is_mission:
+        intent = "MISSION"
     elif is_reminder:
         intent = "REMINDER"
     elif is_memory_recall:
@@ -174,6 +177,9 @@ def background_data_node(ctx, node_input) -> str:
         elif route == "REMINDER":
             ctx.state["created_reminder"] = raw_data.get("created_reminder")
             ctx.state["reminderCreated"] = True
+        elif route == "MISSION":
+            ctx.state["created_mission"] = raw_data.get("created_mission")
+            ctx.state["missionCreated"] = True
             
     return "Background processing complete."
 
@@ -240,7 +246,7 @@ jarvis_core_workflow = Workflow(
     name="jarvis_core_workflow",
     edges=[
         Edge(from_node=START, to_node=orchestrator_node),
-        Edge(from_node=orchestrator_node, to_node=background_data_node, route=["SYSTEM", "REMINDER", "MEMORY_STORE", "MEMORY_RECALL"]),
+        Edge(from_node=orchestrator_node, to_node=background_data_node, route=["SYSTEM", "REMINDER", "MEMORY_STORE", "MEMORY_RECALL", "MISSION"]),
         Edge(from_node=orchestrator_node, to_node=ui_frontend_node, route="CHAT"),
         Edge(from_node=background_data_node, to_node=ui_frontend_node)
     ]

@@ -154,6 +154,36 @@ class BackgroundDataAgent(A2AAgentBase):
                 self.publish_event("REMINDER_ERROR", workflow_id, request_id, {"error": str(e)})
                 raise e
 
+        def run_mission():
+            self.publish_event("MISSION_CREATE", workflow_id, request_id, {"message": "Deconstructing goal into mission tasks..."})
+            try:
+                from google.genai import Client
+                client = Client()
+                response = client.models.generate_content(
+                    model="gemini-2.5-flash",
+                    contents=f"Break down this goal into 5–7 concrete tasks: '{prompt}'. Return a JSON array of task strings.",
+                    config=types.GenerateContentConfig(
+                        response_mime_type="application/json"
+                    )
+                )
+                tasks_text = response.text.strip() if response.text else "[]"
+                import json
+                try:
+                    tasks_list = json.loads(tasks_text)
+                    if not isinstance(tasks_list, list):
+                        tasks_list = [tasks_text]
+                except Exception:
+                    tasks_list = [t.strip("-*• ") for t in tasks_text.split("\n") if t.strip()]
+                
+                from app.memory_store import derive_mission_title, add_mission
+                title = derive_mission_title(prompt)
+                mission = add_mission(title, prompt, tasks_list)
+                self.publish_event("MISSION_CREATED", workflow_id, request_id, {"mission": mission})
+                return mission
+            except Exception as e:
+                self.publish_event("MISSION_ERROR", workflow_id, request_id, {"error": str(e)})
+                raise e
+
         try:
             futures = {}
             # Parallel logic: if it's system query but has memory indicators, run both!
@@ -162,19 +192,21 @@ class BackgroundDataAgent(A2AAgentBase):
             
             run_sys = (intent == "SYSTEM") or (intent in ("SYSTEM", "MEMORY_RECALL") and is_sys_query)
             run_mem = (intent == "MEMORY_RECALL") or (intent in ("SYSTEM", "MEMORY_RECALL") and is_mem_query)
-
+ 
             with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
                 if run_sys:
                     futures["stats"] = executor.submit(run_system_stats)
                 if run_mem:
                     futures["recalled"] = executor.submit(run_memory_recall)
-
+ 
                 # Handle other cases
                 if intent == "MEMORY_STORE" and not run_mem:
                     futures["store"] = executor.submit(run_memory_store)
                 elif intent == "REMINDER":
                     futures["reminder"] = executor.submit(run_reminder)
-
+                elif intent == "MISSION":
+                    futures["mission"] = executor.submit(run_mission)
+ 
                 for name, future in futures.items():
                     res = future.result()
                     if name == "stats":
@@ -186,6 +218,8 @@ class BackgroundDataAgent(A2AAgentBase):
                         raw_data["memory_status"] = res["memory_status"]
                     elif name == "reminder":
                         raw_data["created_reminder"] = res
+                    elif name == "mission":
+                        raw_data["created_mission"] = res
 
         except Exception as e:
             self.publish_event("TOOL_FAILURE", workflow_id, request_id, {"error": str(e), "failed_intent": intent})
@@ -394,6 +428,39 @@ class UIFrontendAgent(A2AAgentBase):
                 message = (
                     f"I've added \"{reminder.get('title')}\" to your agenda. I will make sure you don't miss it. "
                     f"Would you like me to set a recurring reminder for this task?"
+                )
+                self._stream_fallback(message, workflow_id, request_id)
+            
+        elif intent == "MISSION":
+            mission = raw_data.get("created_mission", {})
+            title = mission.get("title", "Mission")
+            tasks = mission.get("tasks", [])
+            action_taken = f"Mission Engine: Initialized '{title}' with {len(tasks)} tasks"
+            
+            task_list_str = "\n".join(f"- {t.get('text')}" for t in tasks)
+            
+            try:
+                message = self._generate_and_stream(
+                    contents=(
+                        f"The user goal is: '{prompt}'. You have derived the mission title '{title}' "
+                        f"and broken it down into these tasks:\n{task_list_str}\n\n"
+                        f"Format a warm, encouraging response confirming the creation of the mission "
+                        f"'{title}', and present the tasks as a clean bulleted or numbered list. "
+                        f"Explain that these tasks are now tracked in their Missions panel. Conclude with a single proactive suggestion."
+                    ),
+                    system_instruction=self.system_prompt,
+                    workflow_id=workflow_id,
+                    request_id=request_id
+                )
+            except Exception:
+                pass
+                
+            if not message:
+                task_numbered_list = "\n".join(f"{i+1}. {t.get('text')}" for i, t in enumerate(tasks))
+                message = (
+                    f"I've initialized the mission **{title}** and deconstructed your goal into these tasks:\n\n"
+                    f"{task_numbered_list}\n\n"
+                    f"These tasks are now tracked in your Missions center. Let me know how I can help you get started on this!"
                 )
                 self._stream_fallback(message, workflow_id, request_id)
             

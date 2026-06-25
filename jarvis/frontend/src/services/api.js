@@ -187,3 +187,40 @@ export async function resetSessionContext(userId = 'user_01', sessionId = 'defau
   }
 }
 
+export async function getMissions() {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/missions`);
+    if (!response.ok) throw new Error("Failed to fetch missions");
+    return await response.json();
+  } catch (error) {
+    console.error("getMissions failed:", error);
+    return [];
+  }
+}
+
+export async function toggleMissionTask(missionId, taskId) {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/missions/${missionId}/tasks/${taskId}/toggle`, {
+      method: 'POST',
+    });
+    if (!response.ok) throw new Error("Failed to toggle mission task");
+    return await response.json();
+  } catch (error) {
+    console.error("toggleMissionTask failed:", error);
+    return null;
+  }
+}
+
+export async function deleteMission(missionId) {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/missions/${missionId}`, {
+      method: 'DELETE',
+    });
+    if (!response.ok) throw new Error("Failed to delete mission");
+    return await response.json();
+  } catch (error) {
+    console.error("deleteMission failed:", error);
+    return null;
+  }
+}
+

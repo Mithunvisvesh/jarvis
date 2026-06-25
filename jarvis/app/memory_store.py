@@ -120,3 +120,90 @@ def delete_fact(fact_id: str) -> bool:
     save_memory(data)
     return True
 
+
+def load_missions() -> list:
+    """Loads all missions from memory.json."""
+    data = load_memory()
+    return data.get("missions", [])
+
+
+def save_missions(missions: list):
+    """Saves missions back to memory.json."""
+    data = load_memory()
+    data["missions"] = missions
+    save_memory(data)
+
+
+def derive_mission_title(goal: str) -> str:
+    """Derives a concise capitalized title starting with 'Mission: ' from the user's goal."""
+    cleaned = goal.strip()
+    if "capstone" in cleaned.lower():
+        return "Mission: JARVIS Capstone"
+    
+    # Remove common goal prefixes
+    cleaned = re.sub(r'^(help me |please |i want to |i need to |let\'s )', '', cleaned, flags=re.IGNORECASE)
+    cleaned = re.sub(r'^(finish |complete |do |work on |build |make )', '', cleaned, flags=re.IGNORECASE)
+    cleaned = re.sub(r'^(my )', '', cleaned, flags=re.IGNORECASE)
+    
+    words = cleaned.split()
+    capitalized = " ".join(w.capitalize() for w in words)
+    return f"Mission: {capitalized}"
+
+
+def add_mission(title: str, goal: str, tasks: list) -> dict:
+    """Creates a new mission in memory.json and returns it."""
+    missions = load_missions()
+    
+    # Check if a mission with the same title already exists
+    for m in missions:
+        if m["title"].lower() == title.lower():
+            return m
+            
+    structured_tasks = []
+    for t in tasks:
+        structured_tasks.append({
+            "id": str(uuid.uuid4()),
+            "text": t.strip(),
+            "completed": False
+        })
+        
+    new_mission = {
+        "id": str(uuid.uuid4()),
+        "title": title.strip(),
+        "goal": goal.strip(),
+        "tasks": structured_tasks,
+        "created_at": datetime.now().isoformat()
+    }
+    missions.append(new_mission)
+    save_missions(missions)
+    return new_mission
+
+
+def toggle_mission_task(mission_id: str, task_id: str) -> bool:
+    """Toggles the completion status of a task inside a mission. Returns True if updated."""
+    missions = load_missions()
+    updated = False
+    for m in missions:
+        if m["id"] == mission_id:
+            for t in m["tasks"]:
+                if t["id"] == task_id:
+                    t["completed"] = not t["completed"]
+                    updated = True
+                    break
+            if updated:
+                break
+    if updated:
+        save_missions(missions)
+    return updated
+
+
+def delete_mission(mission_id: str) -> bool:
+    """Deletes a mission by ID. Returns True if deleted."""
+    missions = load_missions()
+    initial_len = len(missions)
+    new_missions = [m for m in missions if m["id"] != mission_id]
+    if len(new_missions) == initial_len:
+        return False
+    save_missions(new_missions)
+    return True
+

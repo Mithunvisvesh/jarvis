@@ -106,3 +106,39 @@ async def test_workflow_routing_reminder() -> None:
             final_output = e.output
             
     assert "reminder parsed" in final_output.lower() or "agenda" in final_output.lower() or "temporal buffer" in final_output.lower()
+
+
+@pytest.mark.asyncio
+async def test_workflow_routing_mission() -> None:
+    """Verifies that mission requests route correctly and initialize a deconstructed checklist."""
+    session_service = InMemorySessionService()
+    session = session_service.create_session_sync(user_id="test_user", app_name="workflow_app")
+    runner = Runner(app=workflow_app, session_service=session_service)
+
+    message = types.Content(
+        role="user", parts=[types.Part.from_text(text="Help me finish my capstone")]
+    )
+
+    events = []
+    async for event in runner.run_async(user_id="test_user", session_id=session.id, new_message=message):
+        events.append(event)
+        
+    assert len(events) > 0
+
+    # Fetch updated session state
+    updated_session = await session_service.get_session(
+        session_id=session.id,
+        app_name="workflow_app",
+        user_id="test_user"
+    )
+    
+    state = updated_session.state
+    assert "created_mission" in state
+    assert state["missionCreated"] is True
+    
+    final_output = ""
+    for e in events:
+        if e.output:
+            final_output = e.output
+            
+    assert "mission" in final_output.lower() or "capstone" in final_output.lower()

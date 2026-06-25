@@ -8,6 +8,7 @@ import MemoryViewer from './components/MemoryViewer';
 import DeveloperPanel from './components/DeveloperPanel';
 import AgendaView from './components/AgendaView';
 import KnowledgeView from './components/KnowledgeView';
+import MissionsView from './components/MissionsView';
 
 function Dashboard() {
   const [activeRightTab, setActiveRightTab] = useState('system'); // 'system' | 'memory' | 'logs'
@@ -52,6 +53,7 @@ function Dashboard() {
             {currentView === 'chat' && <ChatInterface />}
             {currentView === 'agenda' && <AgendaView />}
             {currentView === 'knowledge' && <KnowledgeView />}
+            {currentView === 'missions' && <MissionsView />}
           </div>
         </div>
 

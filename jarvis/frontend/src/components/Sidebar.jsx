@@ -4,7 +4,8 @@ import {
   MessageSquare, 
   Calendar, 
   Brain, 
-  Code
+  Code,
+  Target
 } from 'lucide-react';
 
 export default function Sidebar({ currentView, setCurrentView }) {
@@ -14,6 +15,7 @@ export default function Sidebar({ currentView, setCurrentView }) {
     { id: 'chat', icon: MessageSquare, label: 'CHAT OVERLAY' },
     { id: 'agenda', icon: Calendar, label: 'AGENDA' },
     { id: 'knowledge', icon: Brain, label: 'KNOWLEDGE BASE' },
+    { id: 'missions', icon: Target, label: 'MISSIONS' },
   ];
 
   return (

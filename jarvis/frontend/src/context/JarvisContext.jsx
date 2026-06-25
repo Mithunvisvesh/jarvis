@@ -8,7 +8,10 @@ import {
   getMemories,
   deleteMemory,
   getDueReminders,
-  resetSessionContext
+  resetSessionContext,
+  getMissions,
+  toggleMissionTask as toggleMissionTaskApi,
+  deleteMission as deleteMissionApi
 } from '../services/api';
 
 const JarvisContext = createContext(undefined);
@@ -89,6 +92,7 @@ export function JarvisProvider({ children }) {
   const [reminders, setReminders] = useState([]);
   const [memories, setMemories] = useState([]);
   const [dueReminders, setDueReminders] = useState([]);
+  const [missions, setMissions] = useState([]);
   const [timelineEvents, setTimelineEvents] = useState([
     {
       id: 'init-evt',
@@ -175,9 +179,48 @@ export function JarvisProvider({ children }) {
     }
   };
 
+  // Fetch all missions from the backend
+  const fetchMissions = async () => {
+    try {
+      const data = await getMissions();
+      if (Array.isArray(data)) {
+        setMissions(data);
+      }
+    } catch (err) {
+      console.error("Failed to fetch missions:", err);
+    }
+  };
+
+  // Toggle a task in a mission
+  const toggleMissionTask = async (missionId, taskId) => {
+    try {
+      const res = await toggleMissionTaskApi(missionId, taskId);
+      if (res && res.status === 'success') {
+        addTimelineEvent('system', 'Mission task status updated');
+        await fetchMissions();
+      }
+    } catch (err) {
+      console.error("Failed to toggle mission task:", err);
+    }
+  };
+
+  // Delete a mission from the backend
+  const removeMission = async (missionId) => {
+    try {
+      const res = await deleteMissionApi(missionId);
+      if (res && res.status === 'success') {
+        addTimelineEvent('system', 'Mission dismissed successfully');
+        await fetchMissions();
+      }
+    } catch (err) {
+      console.error("Failed to delete mission:", err);
+    }
+  };
+
   useEffect(() => {
     fetchReminders();
     fetchMemories();
+    fetchMissions();
   }, []);
 
   // Periodic Telemetry Simulator to make meters "dance" in the UI
@@ -607,6 +650,7 @@ export function JarvisProvider({ children }) {
       // Refresh DB files
       await fetchReminders();
       await fetchMemories();
+      await fetchMissions();
     }
 
     // Reset execution state to Idle after 2 seconds
@@ -723,7 +767,11 @@ export function JarvisProvider({ children }) {
       addTimelineEvent,
       clearChat,
       wipeSessionContext,
-      resetConversation
+      resetConversation,
+      missions,
+      fetchMissions,
+      toggleMissionTask,
+      removeMission
     }}>
       {children}
     </JarvisContext.Provider>
