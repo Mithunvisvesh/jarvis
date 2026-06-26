@@ -237,6 +237,10 @@ def ui_frontend_node(ctx, node_input) -> str:
     
     # Reconstruct the BACKGROUND_DATA_COMPLETE event
     raw_data = ctx.state.get("raw_data", {})
+    if isinstance(raw_data, dict):
+        raw_data = raw_data.copy()
+        raw_data["recent_messages"] = ctx.state.get("recent_messages", [])
+        
     bg_complete_event = AgentEvent(
         event_type="BACKGROUND_DATA_COMPLETE",
         sender="Background_Data_Agent",

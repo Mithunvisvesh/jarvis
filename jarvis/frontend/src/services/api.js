@@ -4,7 +4,7 @@
 
 const API_BASE_URL = 'http://localhost:8001';
 
-export async function sendChatMessage(prompt, userId = 'user_01') {
+export async function sendChatMessage(prompt, userId = 'user_01', recentMessages = []) {
   try {
     const response = await fetch(`${API_BASE_URL}/api/chat`, {
       method: 'POST',
@@ -14,10 +14,14 @@ export async function sendChatMessage(prompt, userId = 'user_01') {
       body: JSON.stringify({
         prompt: prompt,
         user_id: userId,
+        recent_messages: recentMessages
       }),
     });
 
     if (!response.ok) {
+      if (response.status === 429) {
+        throw new Error("Request already in progress for this session. Please wait for the current action to complete.");
+      }
       throw new Error(`API error: ${response.status} ${response.statusText}`);
     }
 
@@ -27,7 +31,6 @@ export async function sendChatMessage(prompt, userId = 'user_01') {
       data: {
         message: data.message || 'JARVIS online.',
         gpu_load: data.gpuLoad !== undefined ? data.gpuLoad : (typeof data.gpu_load === 'number' ? data.gpu_load : 10),
-        // Accept additional optional telemetry stats from backend
         cpu_load: data.cpuLoad !== undefined ? data.cpuLoad : (data.cpu_load || null),
         ram_load: data.ramLoad !== undefined ? data.ramLoad : (data.ram_load || null),
         disk_load: data.diskLoad !== undefined ? data.diskLoad : (data.disk_load || null),
@@ -37,11 +40,14 @@ export async function sendChatMessage(prompt, userId = 'user_01') {
     };
   } catch (error) {
     console.error('Failed to communicate with JARVIS backend:', error);
+    const isRateLimit = error.message.includes("429") || error.message.includes("already in progress");
     return {
       success: false,
       error: error.message,
       data: {
-        message: `[IPC CONNECTION OFFLINE] Direct override mode enabled. ReAct agent unavailable. Details: ${error.message}`,
+        message: isRateLimit 
+          ? `[RATE LIMIT] A request is already in progress for this session. Please wait for the active agent node to complete execution.`
+          : `[CONNECTION ERROR] Direct override mode enabled. ReAct agent offline or unavailable. Details: ${error.message}`,
         gpu_load: 5,
         cpu_load: 0,
         ram_load: 0,

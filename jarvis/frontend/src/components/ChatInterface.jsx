@@ -49,6 +49,60 @@ function SystemStatus({ executionState, isConnected }) {
   );
 }
 
+const stagePercentages = {
+  'Analyzing Request': 25,
+  'Routing Intent': 50,
+  'Running System Tools': 75,
+  'Synthesizing Response': 90,
+  'Completed': 100
+};
+
+function ActionCard({ actionTaken }) {
+  const [isOpen, setIsOpen] = useState(false);
+  
+  return (
+    <div style={{
+      fontFamily: 'var(--font-mono)',
+      fontSize: '11px',
+      backgroundColor: 'rgba(0, 0, 0, 0.2)',
+      borderLeft: '2px solid rgba(0, 212, 255, 0.4)',
+      padding: '8px 12px',
+      marginBottom: '12px',
+      borderRadius: '0 4px 4px 0',
+      color: 'rgba(255, 255, 255, 0.8)',
+      letterSpacing: '0.5px'
+    }}>
+      <button 
+        type="button"
+        onClick={() => setIsOpen(!isOpen)}
+        style={{
+          background: 'none',
+          border: 'none',
+          color: 'var(--accent-cyan)',
+          fontFamily: 'var(--font-mono)',
+          fontSize: '10px',
+          fontWeight: 'bold',
+          cursor: 'pointer',
+          padding: 0,
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: '4px',
+          outline: 'none',
+          letterSpacing: '1px'
+        }}
+      >
+        <span>{isOpen ? '▼' : '▶'}</span>
+        <span>What I did</span>
+      </button>
+      {isOpen && (
+        <div style={{ marginTop: '8px', borderTop: '1px solid rgba(0, 212, 255, 0.1)', paddingTop: '6px', whiteSpace: 'pre-wrap' }}>
+          {actionTaken}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function ChatInterface() {
   const { 
     messages, 
@@ -67,8 +121,34 @@ export default function ChatInterface() {
   } = useJarvis();
   const [input, setInput] = useState('');
   const messagesEndRef = useRef(null);
+  
+  const [resetStage, setResetStage] = useState(0); // 0 = idle, 1 = confirm
+  const resetTimerRef = useRef(null);
+
+  const handleResetClick = () => {
+    if (resetStage === 0) {
+      setResetStage(1);
+      resetTimerRef.current = setTimeout(() => {
+        setResetStage(0);
+      }, 3000); // 3 seconds timeout
+    } else {
+      if (resetTimerRef.current) {
+        clearTimeout(resetTimerRef.current);
+      }
+      resetConversation();
+      setInput('');
+      setResetStage(0);
+    }
+  };
+
+  useEffect(() => {
+    return () => {
+      if (resetTimerRef.current) clearTimeout(resetTimerRef.current);
+    };
+  }, []);
 
   const [isListening, setIsListening] = useState(false);
+  const [isSpeechSupported, setIsSpeechSupported] = useState(false);
   const recognitionRef = useRef(null);
   const latestInput = useRef('');
   const transcribedTextRef = useRef('');
@@ -80,6 +160,7 @@ export default function ChatInterface() {
   useEffect(() => {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (SpeechRecognition) {
+      setIsSpeechSupported(true);
       const recognition = new SpeechRecognition();
       recognition.continuous = false;
       recognition.interimResults = false;
@@ -125,10 +206,18 @@ export default function ChatInterface() {
     }
 
     if (isListening) {
-      recognitionRef.current.stop();
+      try {
+        recognitionRef.current.stop();
+      } catch (err) {
+        console.error("Failed to stop speech recognition:", err);
+      }
     } else {
       setInput('');
-      recognitionRef.current.start();
+      try {
+        recognitionRef.current.start();
+      } catch (err) {
+        console.error("Failed to start speech recognition:", err);
+      }
     }
   };
 
@@ -161,9 +250,9 @@ export default function ChatInterface() {
   };
 
   const quickPrompts = [
-    { text: 'System Diagnostics', label: 'SYS_CHECK' },
-    { text: 'Schedule team sprint at 2:00 PM', label: 'ADD_REMINDER' },
-    { text: 'Is the ReAct Agent online?', label: 'AGENT_PING' }
+    { text: 'Check my system stats', label: 'SYS_CHECK' },
+    { text: 'Schedule a reminder', label: 'ADD_REMINDER' },
+    { text: 'Help me finish my capstone', label: 'MISSION' }
   ];
 
   return (
@@ -239,52 +328,12 @@ export default function ChatInterface() {
           )}
 
           <button 
-            onClick={() => setIsDeveloperMode(!isDeveloperMode)}
-            title={isDeveloperMode ? "Disable Developer Mode" : "Enable Developer Mode"}
-            style={{
-              background: isDeveloperMode ? 'rgba(0, 212, 255, 0.1)' : 'none',
-              border: isDeveloperMode ? '1px solid var(--accent-cyan)' : '1px solid rgba(255, 255, 255, 0.1)',
-              color: isDeveloperMode ? 'var(--accent-cyan)' : 'var(--text-secondary)',
-              padding: '4px 8px',
-              borderRadius: '4px',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '6px',
-              fontSize: '10px',
-              fontFamily: 'var(--font-nav)',
-              fontWeight: 'bold',
-              transition: 'all 0.2s',
-              boxShadow: isDeveloperMode ? 'var(--glow-cyan)' : 'none'
-            }}
-            onMouseEnter={(e) => {
-              if (!isDeveloperMode) {
-                e.currentTarget.style.color = 'var(--accent-cyan)';
-                e.currentTarget.style.borderColor = 'var(--accent-cyan)';
-              }
-            }}
-            onMouseLeave={(e) => {
-              if (!isDeveloperMode) {
-                e.currentTarget.style.color = 'var(--text-secondary)';
-                e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.1)';
-              }
-            }}
-          >
-            <Code size={12} />
-            <span>DEV</span>
-          </button>
-
-          <button 
-            onClick={() => {
-              resetConversation();
-              setInput('');
-            }}
+            onClick={handleResetClick}
             title="Reset Conversation (Clear Local Storage & Backend Context)"
             style={{
-              background: 'none',
-              border: '1px solid rgba(255, 0, 128, 0.3)',
-              color: 'var(--accent-pink)',
+              background: resetStage === 1 ? 'rgba(255, 0, 0, 0.15)' : 'none',
+              border: resetStage === 1 ? '1px solid #FF0000' : '1px solid rgba(255, 0, 128, 0.3)',
+              color: resetStage === 1 ? '#FF0000' : 'var(--accent-pink)',
               padding: '4px 8px',
               borderRadius: '4px',
               cursor: 'pointer',
@@ -296,20 +345,26 @@ export default function ChatInterface() {
               fontFamily: 'var(--font-nav)',
               fontWeight: 'bold',
               transition: 'all 0.2s',
+              boxShadow: resetStage === 1 ? '0 0 10px rgba(255, 0, 0, 0.3)' : 'none',
+              animation: resetStage === 1 ? 'pulse-pink 1.5s infinite ease-in-out' : 'none'
             }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = 'rgba(255, 0, 128, 0.05)';
-              e.currentTarget.style.boxShadow = 'var(--glow-pink)';
-              e.currentTarget.style.borderColor = 'var(--accent-pink)';
+              if (resetStage === 0) {
+                e.currentTarget.style.backgroundColor = 'rgba(255, 0, 128, 0.05)';
+                e.currentTarget.style.boxShadow = 'var(--glow-pink)';
+                e.currentTarget.style.borderColor = 'var(--accent-pink)';
+              }
             }}
             onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = 'transparent';
-              e.currentTarget.style.boxShadow = 'none';
-              e.currentTarget.style.borderColor = 'rgba(255, 0, 128, 0.3)';
+              if (resetStage === 0) {
+                e.currentTarget.style.backgroundColor = 'transparent';
+                e.currentTarget.style.boxShadow = 'none';
+                e.currentTarget.style.borderColor = 'rgba(255, 0, 128, 0.3)';
+              }
             }}
           >
             <Database size={12} />
-            <span>RESET CONVERSATION</span>
+            <span>{resetStage === 1 ? 'Confirm?' : 'New Session'}</span>
           </button>
         </div>
       </div>
@@ -427,15 +482,31 @@ export default function ChatInterface() {
               }}
             >
               {/* Message Header */}
-              <span style={{
-                fontFamily: 'var(--font-mono)',
-                fontSize: '9px',
-                color: isJarvis ? 'var(--accent-cyan)' : 'var(--accent-pink)',
-                marginBottom: '4px',
-                letterSpacing: '1px'
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                marginBottom: '6px'
               }}>
-                {isJarvis ? '🤖 JARVIS // SYSTEM_RESP' : '👤 VIBE_CODER // IN_PROMPT'}
-              </span>
+                <span style={{
+                  width: '6px',
+                  height: '6px',
+                  borderRadius: '50%',
+                  backgroundColor: isJarvis ? 'var(--accent-cyan)' : 'var(--accent-pink)',
+                  boxShadow: isJarvis ? 'var(--glow-cyan)' : 'var(--glow-pink)',
+                  display: 'inline-block'
+                }} />
+                <span style={{
+                  fontFamily: 'var(--font-header)',
+                  fontSize: '11px',
+                  fontWeight: '600',
+                  color: isJarvis ? 'var(--accent-cyan)' : 'var(--accent-pink)',
+                  letterSpacing: '1.5px',
+                  textTransform: 'uppercase'
+                }}>
+                  {isJarvis ? 'JARVIS' : 'USER'}
+                </span>
+              </div>
 
               {/* Message Bubble */}
               <div 
@@ -447,26 +518,14 @@ export default function ChatInterface() {
                   lineHeight: '1.7',
                   color: 'var(--text-primary)',
                   letterSpacing: '0.2px',
-                  whiteSpace: 'pre-wrap'
+                  whiteSpace: 'pre-wrap',
+                  borderLeft: isJarvis ? 'none' : '1px solid rgba(255, 0, 128, 0.4)',
+                  backgroundColor: isJarvis ? 'rgba(10, 15, 30, 0.5)' : 'rgba(255, 0, 128, 0.03)',
+                  border: isJarvis ? '1px solid var(--border-muted)' : '1px solid rgba(255, 0, 128, 0.15)'
                 }}
               >
                 {isJarvis && msg.action_taken && (
-                  <div style={{
-                    fontFamily: 'var(--font-mono)',
-                    fontSize: '11px',
-                    backgroundColor: 'rgba(0, 0, 0, 0.25)',
-                    borderLeft: '2px solid rgba(0, 212, 255, 0.5)',
-                    padding: '8px 12px',
-                    marginBottom: '12px',
-                    borderRadius: '0 4px 4px 0',
-                    color: 'rgba(255, 255, 255, 0.8)',
-                    letterSpacing: '0.5px'
-                  }}>
-                    <span style={{ color: 'rgba(0, 212, 255, 0.85)', fontWeight: 'bold', display: 'block', marginBottom: '4px', fontSize: '9px', letterSpacing: '1px' }}>
-                      ACTION PROFILE // PROTOCOL LOG
-                    </span>
-                    {msg.action_taken}
-                  </div>
+                  <ActionCard actionTaken={msg.action_taken} />
                 )}
                 {msg.text}
               </div>
@@ -474,7 +533,7 @@ export default function ChatInterface() {
           );
         })}
 
-        {/* Real-time Agent Execution Stepper Progress Indicator */}
+        {/* Real-time Agent Execution Horizontal Progress Indicator */}
         {isThinking && (
           <div style={{
             display: 'flex',
@@ -482,94 +541,81 @@ export default function ChatInterface() {
             alignItems: 'flex-start',
             alignSelf: 'flex-start',
             width: '100%',
-            maxWidth: '480px'
+            maxWidth: '480px',
+            gap: '8px'
           }}>
-            <span style={{
-              fontFamily: 'var(--font-mono)',
-              fontSize: '9px',
-              color: 'var(--accent-cyan)',
-              marginBottom: '4px',
-              letterSpacing: '1px'
-            }}>
-              🤖 JARVIS // ENGINE_PIPELINE
-            </span>
-            <div className={`cyber-panel ${executionState === 'Running System Tools' || executionState === 'Synthesizing Response' ? 'pink-pulse' : 'thinking-pulse'}`} style={{
-              padding: '16px',
-              borderRadius: '4px',
-              width: '100%',
+            <div style={{
               display: 'flex',
-              flexDirection: 'column',
-              gap: '12px'
+              alignItems: 'center',
+              gap: '6px'
             }}>
-              {/* Active state text */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: 'var(--accent-cyan)', fontWeight: 'bold', fontFamily: 'var(--font-mono)' }}>
-                <span className="flicker" style={{
-                  width: '6px',
-                  height: '6px',
-                  borderRadius: '50%',
-                  backgroundColor: 'var(--accent-cyan)',
-                  boxShadow: 'var(--glow-cyan)'
-                }} />
-                <span>{executionState.toUpperCase()}...</span>
-              </div>
-
-              {/* Pipeline Nodes */}
+              <span style={{
+                width: '6px',
+                height: '6px',
+                borderRadius: '50%',
+                backgroundColor: 'var(--accent-cyan)',
+                boxShadow: 'var(--glow-cyan)',
+                display: 'inline-block',
+                animation: 'pulse-cyan 1.5s infinite ease-in-out'
+              }} />
+              <span style={{
+                fontFamily: 'var(--font-header)',
+                fontSize: '11px',
+                fontWeight: '600',
+                color: 'var(--text-primary)',
+                letterSpacing: '1px',
+                textTransform: 'uppercase'
+              }}>
+                JARVIS is processing...
+              </span>
+            </div>
+            
+            <div 
+              style={{
+                width: '100%',
+                backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                border: '1px solid var(--border-muted)',
+                borderRadius: '4px',
+                padding: '12px 16px',
+                backdropFilter: 'blur(12px)',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '8px'
+              }}
+            >
               <div style={{
                 display: 'flex',
                 justifyContent: 'space-between',
-                position: 'relative',
-                marginTop: '4px'
+                fontSize: '10px',
+                fontFamily: 'var(--font-mono)',
+                color: 'var(--text-secondary)',
+                textTransform: 'uppercase',
+                letterSpacing: '0.5px'
               }}>
-                {stages.map((stage, idx) => {
-                  const stageIndex = stages.indexOf(executionState);
-                  const isActive = stage === executionState;
-                  const isCompleted = stages.indexOf(stage) < stageIndex;
-
-                  let nodeColor = 'rgba(255, 255, 255, 0.1)';
-                  let textColor = 'var(--text-dark)';
-                  let glow = 'none';
-
-                  if (isActive) {
-                    nodeColor = 'var(--accent-cyan)';
-                    textColor = 'var(--accent-cyan)';
-                    glow = 'var(--glow-cyan)';
-                  } else if (isCompleted) {
-                    nodeColor = 'var(--accent-green)';
-                    textColor = 'var(--accent-green)';
-                    glow = 'var(--glow-green)';
-                  }
-
-                  return (
-                    <div key={idx} style={{
-                      display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: 'center',
-                      flex: 1,
-                      position: 'relative'
-                    }}>
-                      <div style={{
-                        width: '8px',
-                        height: '8px',
-                        borderRadius: '50%',
-                        backgroundColor: nodeColor,
-                        boxShadow: glow,
-                        transition: 'all 0.3s ease',
-                        zIndex: 2
-                      }} />
-                      <span style={{
-                        fontSize: '8px',
-                        fontFamily: 'var(--font-mono)',
-                        color: textColor,
-                        marginTop: '6px',
-                        textAlign: 'center',
-                        transition: 'all 0.3s ease',
-                        textTransform: 'uppercase'
-                      }}>
-                        {stage.split(' ')[0]}
-                      </span>
-                    </div>
-                  );
-                })}
+                <span>{executionState}</span>
+                <span style={{ color: 'var(--accent-cyan)' }}>{stagePercentages[executionState] || 50}%</span>
+              </div>
+              
+              {/* Progress track */}
+              <div style={{
+                height: '4px',
+                width: '100%',
+                backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                borderRadius: '2px',
+                overflow: 'hidden',
+                position: 'relative'
+              }}>
+                {/* Progress bar fill */}
+                <div style={{
+                  height: '100%',
+                  width: `${stagePercentages[executionState] || 50}%`,
+                  backgroundColor: 'var(--accent-cyan)',
+                  boxShadow: 'var(--glow-cyan)',
+                  borderRadius: '2px',
+                  transition: 'width 0.4s ease-out',
+                  position: 'relative',
+                  backgroundImage: 'linear-gradient(90deg, var(--accent-cyan), var(--accent-pink))'
+                }} />
               </div>
             </div>
           </div>
@@ -617,7 +663,7 @@ export default function ChatInterface() {
                   e.currentTarget.style.boxShadow = 'none';
                 }}
               >
-                [{p.label}] {p.text}
+                {p.text}
               </button>
             ))}
           </div>
@@ -630,7 +676,7 @@ export default function ChatInterface() {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             disabled={isThinking || isListening}
-            placeholder={isListening ? 'Listening... Speak now.' : (isThinking ? 'JARVIS is thinking...' : 'Input operational prompts (e.g. check system diagnostics)...')}
+            placeholder={isListening ? 'Listening... Speak now.' : (isThinking ? 'JARVIS is thinking...' : 'Ask JARVIS anything...')}
             style={{
               flex: 1,
               background: 'rgba(0, 0, 0, 0.4)',
@@ -669,9 +715,15 @@ export default function ChatInterface() {
               transition: 'all 0.3s ease',
               boxShadow: isListening ? 'var(--glow-pink)' : 'none',
             }}
-            title={isListening ? "Listening... Speak now. Tap to stop." : "Push to Talk (MVP Voice)"}
+            title={isListening ? "Listening... Speak now. Tap to stop." : isSpeechSupported ? "Voice Input" : "Voice Input (Unsupported in this browser)"}
           >
-            {isListening ? <Mic size={16} /> : <MicOff size={16} />}
+            {!isSpeechSupported ? (
+              <MicOff size={16} />
+            ) : isListening ? (
+              <Mic size={16} className="mic-listening" />
+            ) : (
+              <Mic size={16} />
+            )}
           </button>
           <button 
             type="submit"

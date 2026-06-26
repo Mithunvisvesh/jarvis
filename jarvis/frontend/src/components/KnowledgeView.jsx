@@ -26,6 +26,7 @@ function computeSimilarity(query, text) {
 export default function KnowledgeView() {
   const { memories, removeMemory } = useJarvis();
   const [searchQuery, setSearchQuery] = useState('');
+  const [activeTab, setActiveTab] = useState('categories'); // 'categories' or 'timeline'
 
   // Process memories with search score
   const processedMemories = memories.map(m => {
@@ -33,13 +34,112 @@ export default function KnowledgeView() {
     return { ...m, score };
   });
 
-  // Sort memories: score desc (if searching) or date desc
-  const sortedMemories = [...processedMemories].sort((a, b) => {
-    if (searchQuery.trim()) {
-      return b.score - a.score;
-    }
+  // Filter memories if searching (similarity score > 0.25)
+  const filteredMemories = processedMemories.filter(m => !searchQuery.trim() || m.score > 0.25);
+
+  const categorizeFact = (fact) => {
+    const text = fact.toLowerCase();
+    if (/deadline|july|date|due/i.test(text)) return 'Deadlines';
+    if (/project|built|implement|capstone|jarvis/i.test(text)) return 'Projects';
+    if (/prefer|like|style|want|usually/i.test(text)) return 'Preferences';
+    return 'General';
+  };
+
+  // Grouping for CATEGORIES tab
+  const categories = {
+    'Deadlines': [],
+    'Projects': [],
+    'Preferences': [],
+    'General': []
+  };
+
+  // Filtered and sorted category items
+  const sortedCategoryMemories = [...filteredMemories].sort((a, b) => {
+    if (searchQuery.trim()) return b.score - a.score;
     return new Date(b.created_at) - new Date(a.created_at);
   });
+
+  sortedCategoryMemories.forEach(mem => {
+    const cat = categorizeFact(mem.fact);
+    categories[cat].push(mem);
+  });
+
+  // Grouping for TIMELINE tab
+  const timelineMemories = [...filteredMemories].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+  
+  const timelineGroups = {};
+  timelineMemories.forEach(mem => {
+    const dateStr = new Date(mem.created_at).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' });
+    if (!timelineGroups[dateStr]) {
+      timelineGroups[dateStr] = [];
+    }
+    timelineGroups[dateStr].push(mem);
+  });
+
+  const renderMemoryCard = (mem) => {
+    return (
+      <div 
+        key={mem.id}
+        className="cyber-panel"
+        style={{
+          padding: '16px 20px',
+          borderRadius: '6px',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '8px',
+          borderLeft: '3px solid var(--accent-green)',
+          backgroundColor: 'rgba(10, 14, 24, 0.4)',
+          transition: 'all 0.2s ease',
+          marginBottom: '10px'
+        }}
+      >
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '16px' }}>
+          <span style={{
+            fontSize: '13.5px',
+            color: 'var(--text-primary)',
+            fontFamily: 'var(--font-body)',
+            lineHeight: '1.5',
+            wordBreak: 'break-word'
+          }}>
+            {mem.fact}
+          </span>
+          
+          <button
+            onClick={() => removeMemory(mem.id)}
+            title="Delete Memory Fact"
+            style={{
+              background: 'none',
+              border: 'none',
+              color: 'var(--text-secondary)',
+              cursor: 'pointer',
+              padding: '4px',
+              display: 'flex',
+              alignItems: 'center',
+              transition: 'color 0.2s',
+              alignSelf: 'flex-start'
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.color = 'var(--accent-pink)'}
+            onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-secondary)'}
+          >
+            <Trash2 size={13} />
+          </button>
+        </div>
+
+        <div style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginTop: '2px',
+          fontSize: '10px',
+          fontFamily: 'var(--font-mono)'
+        }}>
+          <span style={{ color: 'var(--text-secondary)' }}>
+            Recorded on {new Date(mem.created_at).toLocaleDateString()} {new Date(mem.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+          </span>
+        </div>
+      </div>
+    );
+  };
 
   return (
     <div style={{
@@ -74,7 +174,7 @@ export default function KnowledgeView() {
             gap: '8px'
           }}>
             <Brain size={18} style={{ color: 'var(--accent-green)' }} />
-            KNOWLEDGE BASE
+            MEMORY
           </h1>
           <p style={{
             margin: '4px 0 0 0',
@@ -116,6 +216,52 @@ export default function KnowledgeView() {
         </div>
       </div>
 
+      {/* Tabs Container */}
+      <div style={{
+        display: 'flex',
+        borderBottom: '1px solid var(--border-muted)',
+        background: 'rgba(5, 8, 16, 0.4)',
+        flexShrink: 0,
+        padding: '0 24px'
+      }}>
+        <button
+          onClick={() => setActiveTab('categories')}
+          style={{
+            background: 'none',
+            border: 'none',
+            borderBottom: activeTab === 'categories' ? '2px solid var(--accent-green)' : '2px solid transparent',
+            color: activeTab === 'categories' ? 'var(--accent-green)' : 'var(--text-secondary)',
+            fontFamily: 'var(--font-nav)',
+            fontSize: '11px',
+            fontWeight: 'bold',
+            padding: '12px 16px',
+            cursor: 'pointer',
+            transition: 'all 0.2s',
+            letterSpacing: '1.5px'
+          }}
+        >
+          CATEGORIES
+        </button>
+        <button
+          onClick={() => setActiveTab('timeline')}
+          style={{
+            background: 'none',
+            border: 'none',
+            borderBottom: activeTab === 'timeline' ? '2px solid var(--accent-green)' : '2px solid transparent',
+            color: activeTab === 'timeline' ? 'var(--accent-green)' : 'var(--text-secondary)',
+            fontFamily: 'var(--font-nav)',
+            fontSize: '11px',
+            fontWeight: 'bold',
+            padding: '12px 16px',
+            cursor: 'pointer',
+            transition: 'all 0.2s',
+            letterSpacing: '1.5px'
+          }}
+        >
+          TIMELINE
+        </button>
+      </div>
+
       {/* Main Workspace Area */}
       <div style={{
         flex: 1,
@@ -125,7 +271,7 @@ export default function KnowledgeView() {
         flexDirection: 'column',
         gap: '12px'
       }}>
-        {sortedMemories.length === 0 ? (
+        {memories.length === 0 ? (
           <div style={{
             display: 'flex',
             flexDirection: 'column',
@@ -159,94 +305,90 @@ export default function KnowledgeView() {
               Try: "Remember that the user is Mithun" or "Remember that my capstone project deadline is July 6"
             </div>
           </div>
-        ) : (
-          sortedMemories.map((mem) => {
-            const hasQuery = searchQuery.trim().length > 0;
-            const scorePercent = Math.round(mem.score * 100);
-            
-            // Color based on confidence levels
-            let scoreColor = 'var(--text-dark)';
-            if (hasQuery) {
-              if (mem.score >= 0.80) scoreColor = 'var(--accent-green)';
-              else if (mem.score >= 0.50) scoreColor = 'var(--accent-orange)';
-              else scoreColor = 'var(--accent-pink)';
-            }
-
-            return (
-              <div 
-                key={mem.id}
-                className="cyber-panel"
-                style={{
-                  padding: '18px 24px',
-                  borderRadius: '6px',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '8px',
-                  borderLeft: '4px solid var(--accent-green)',
-                  backgroundColor: 'rgba(10, 14, 24, 0.4)',
-                  transition: 'all 0.2s ease'
-                }}
-              >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '16px' }}>
-                  <span style={{
-                    fontSize: '14px',
-                    color: 'var(--text-primary)',
-                    fontFamily: 'var(--font-body)',
-                    lineHeight: '1.5',
-                    wordBreak: 'break-word'
+        ) : filteredMemories.length === 0 ? (
+          <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '80px 24px',
+            color: 'var(--text-secondary)',
+            fontFamily: 'var(--font-mono)',
+            textAlign: 'center',
+            gap: '12px'
+          }}>
+            <div style={{ fontSize: '13px', color: 'var(--text-primary)', fontWeight: 'bold', letterSpacing: '1px' }}>
+              NO MATCHING MEMORIES FOUND
+            </div>
+            <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
+              Adjust your search query to find indexed facts.
+            </div>
+          </div>
+        ) : activeTab === 'categories' ? (
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            {Object.keys(categories).map(catName => {
+              const catMemories = categories[catName];
+              if (catMemories.length === 0) return null;
+              return (
+                <div key={catName} style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '16px' }}>
+                  <h3 style={{
+                    fontSize: '11px',
+                    fontFamily: 'var(--font-header)',
+                    color: 'var(--accent-green)',
+                    fontWeight: 'bold',
+                    letterSpacing: '1px',
+                    margin: '8px 0 10px 0',
+                    textTransform: 'uppercase',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px'
                   }}>
-                    {mem.fact}
-                  </span>
-                  
-                  <button
-                    onClick={() => removeMemory(mem.id)}
-                    title="Delete Memory Fact"
-                    style={{
-                      background: 'none',
-                      border: 'none',
-                      color: 'var(--text-secondary)',
-                      cursor: 'pointer',
-                      padding: '4px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      transition: 'color 0.2s',
-                      alignSelf: 'flex-start'
-                    }}
-                    onMouseEnter={(e) => e.currentTarget.style.color = 'var(--accent-pink)'}
-                    onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-secondary)'}
-                  >
-                    <Trash2 size={14} />
-                  </button>
-                </div>
-
-                <div style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  marginTop: '4px',
-                  fontSize: '11px',
-                  fontFamily: 'var(--font-mono)'
-                }}>
-                  <span style={{ color: 'var(--text-dark)' }}>
-                    STORED_ON: {new Date(mem.created_at).toLocaleDateString()} {new Date(mem.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                  </span>
-
-                  {hasQuery && (
                     <span style={{
-                      color: scoreColor,
-                      fontWeight: 'bold',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '4px'
-                    }}>
-                      <Award size={12} />
-                      MATCH CONFIDENCE: {scorePercent}%
-                    </span>
-                  )}
+                      width: '6px',
+                      height: '6px',
+                      borderRadius: '50%',
+                      backgroundColor: 'var(--accent-green)',
+                      boxShadow: 'var(--glow-green)'
+                    }} />
+                    {catName} ({catMemories.length})
+                  </h3>
+                  {catMemories.map(renderMemoryCard)}
                 </div>
-              </div>
-            );
-          })
+              );
+            })}
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            {Object.keys(timelineGroups).map(dateStr => {
+              const groupMemories = timelineGroups[dateStr];
+              return (
+                <div key={dateStr} style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '16px' }}>
+                  <h3 style={{
+                    fontSize: '11px',
+                    fontFamily: 'var(--font-header)',
+                    color: 'var(--accent-green)',
+                    fontWeight: 'bold',
+                    letterSpacing: '1px',
+                    margin: '8px 0 10px 0',
+                    textTransform: 'uppercase',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px'
+                  }}>
+                    <span style={{
+                      width: '6px',
+                      height: '6px',
+                      borderRadius: '50%',
+                      backgroundColor: 'var(--accent-green)',
+                      boxShadow: 'var(--glow-green)'
+                    }} />
+                    {dateStr}
+                  </h3>
+                  {groupMemories.map(renderMemoryCard)}
+                </div>
+              );
+            })}
+          </div>
         )}
       </div>
     </div>

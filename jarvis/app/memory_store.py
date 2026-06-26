@@ -80,7 +80,7 @@ def recall_facts(query_text: str) -> dict:
         
     query_words_sorted = " ".join(sorted(query_cleaned.split()))
     
-    best_fact = None
+    best_item = None
     best_score = 0.0
     
     for item in facts:
@@ -95,17 +95,18 @@ def recall_facts(query_text: str) -> dict:
         
         if score > best_score:
             best_score = score
-            best_fact = fact_text
+            best_item = item
             
-    if best_score < 0.50:
+    if best_score < 0.50 or not best_item:
         return {
             "fact": None,
             "confidence": 0.0
         }
         
     return {
-        "fact": best_fact,
-        "confidence": round(best_score, 2)
+        "fact": best_item["fact"],
+        "confidence": round(best_score, 2),
+        "created_at": best_item.get("created_at")
     }
 
 def delete_fact(fact_id: str) -> bool:

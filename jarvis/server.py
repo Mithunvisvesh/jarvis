@@ -43,6 +43,7 @@ class JarvisRequest(BaseModel):
     prompt: str
     user_id: str = "default_user"
     session_id: str = "default_session"
+    recent_messages: list[str] = []
 
 class MissionCreateRequest(BaseModel):
     goal: str
@@ -112,6 +113,13 @@ async def chat_endpoint(request: JarvisRequest, use_workflow: bool = Query(True)
                 app_name=app_to_run.name,
                 session_id=request.session_id
             )
+
+        # Update the storage session state with recent messages so the workflow runner can access it
+        storage_session = session_service.sessions.get(app_to_run.name, {}).get(request.user_id, {}).get(session.id)
+        if storage_session:
+            if storage_session.state is None:
+                storage_session.state = {}
+            storage_session.state["recent_messages"] = request.recent_messages
 
         agent_response = ""
         events = []
@@ -271,6 +279,7 @@ async def chat_stream_endpoint(request: JarvisRequest):
             orch = OrchestratorAgent()
             bg_data_agent = BackgroundDataAgent()
             ui_frontend_agent = UIFrontendAgent()
+            ui_frontend_agent.recent_messages = request.recent_messages
             bg_agent = BackgroundAgent()
             
             # Wire events with Fast Path bypass for CHAT

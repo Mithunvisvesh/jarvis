@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { 
   sendChatMessage, 
   getReminders, 
@@ -16,7 +16,7 @@ import {
 
 const JarvisContext = createContext(undefined);
 
-const getWelcomeMessage = (remindersCount) => {
+const getWelcomeMessage = (remindersCount, activeMissionsCount = 0, inProgressTasksCount = 0, prependText = '') => {
   const today = new Date();
   const hours = today.getHours();
   let timeOfDay = 'evening';
@@ -35,7 +35,17 @@ const getWelcomeMessage = (remindersCount) => {
   const timeDiff = d2.getTime() - d1.getTime();
   const daysAway = Math.round(timeDiff / (1000 * 3600 * 24));
 
-  return `JARVIS online. Good ${timeOfDay}, Mithun. Today is ${todayStr} — your capstone deadline is ${daysAway} days away. I have ${remindersCount} items in your agenda. How can I help you today?`;
+  let baseMsg = '';
+  if (daysAway <= 3) {
+    baseMsg = `Mithun, you have only ${daysAway} days left before your capstone deadline. I'm tracking ${activeMissionsCount} active missions. Let's prioritize today.`;
+  } else if (daysAway <= 7) {
+    baseMsg = `Mithun, your capstone deadline is ${daysAway} days away. Based on your missions, ${inProgressTasksCount} tasks are still in progress. Want to review your progress or tackle something specific?`;
+  } else if (daysAway <= 14) {
+    baseMsg = `JARVIS online. Good ${timeOfDay}, Mithun. Today is ${todayStr} — your capstone deadline is ${daysAway} days away. I have ${remindersCount} items in your agenda. How can I help you today?`;
+  } else {
+    baseMsg = `JARVIS online. Good ${timeOfDay}, Mithun. How can I assist you today?`;
+  }
+  return prependText + baseMsg;
 };
 
 export function JarvisProvider({ children }) {
@@ -65,6 +75,7 @@ export function JarvisProvider({ children }) {
   });
 
   const [currentRequestEvents, setCurrentRequestEvents] = useState([]);
+  const streamingMessageIdRef = useRef(null);
 
   // Serialize messages to localStorage whenever they change
   useEffect(() => {
@@ -80,6 +91,7 @@ export function JarvisProvider({ children }) {
   const [executionState, setExecutionState] = useState('Idle');
   const [gpuLoad, setGpuLoad] = useState(10);
   const [isConnected, setIsConnected] = useState(true);
+  const [welcomeBackText, setWelcomeBackText] = useState('');
   
   const [telemetry, setTelemetry] = useState({
     cpuLoad: 28,
@@ -124,30 +136,14 @@ export function JarvisProvider({ children }) {
           id: item.id,
           text: item.title,
           time: item.day ? `${item.time} (${item.day})` : item.time,
-          completed: item.status === 'completed'
+          completed: item.status === 'completed',
+          type: item.type,
+          day: item.day,
+          rawTime: item.time,
+          created_at: item.created_at,
+          status: item.status
         }));
         setReminders(mappedReminders);
-        
-        // Dynamically update welcome message with actual count N
-        const welcomeText = getWelcomeMessage(mappedReminders.length);
-        setMessages(prev => {
-          if (prev.length > 0) {
-            return prev.map((msg, index) => {
-              if (index === 0 && (msg.id === 'init' || msg.id.startsWith('init-') || msg.text.startsWith('JARVIS online.'))) {
-                return { ...msg, text: welcomeText };
-              }
-              return msg;
-            });
-          }
-          return [
-            {
-              id: 'init',
-              sender: 'jarvis',
-              text: welcomeText,
-              timestamp: new Date()
-            }
-          ];
-        });
       }
     } catch (err) {
       console.error("Failed to fetch reminders:", err);
@@ -193,14 +189,34 @@ export function JarvisProvider({ children }) {
 
   // Toggle a task in a mission
   const toggleMissionTask = async (missionId, taskId) => {
+    // Optimistically toggle task in local state for instant UI responsiveness
+    setMissions(prevMissions =>
+      prevMissions.map(m => {
+        if (m.id === missionId) {
+          return {
+            ...m,
+            tasks: m.tasks.map(t =>
+              t.id === taskId ? { ...t, completed: !t.completed } : t
+            )
+          };
+        }
+        return m;
+      })
+    );
+
     try {
       const res = await toggleMissionTaskApi(missionId, taskId);
       if (res && res.status === 'success') {
         addTimelineEvent('system', 'Mission task status updated');
         await fetchMissions();
+      } else {
+        // Rollback on failure
+        await fetchMissions();
       }
     } catch (err) {
       console.error("Failed to toggle mission task:", err);
+      // Rollback on failure
+      await fetchMissions();
     }
   };
 
@@ -218,10 +234,63 @@ export function JarvisProvider({ children }) {
   };
 
   useEffect(() => {
+    // Check last session date proximity
+    const lastSessionStr = window.localStorage.getItem('jarvis_last_session');
+    const today = new Date();
+    if (lastSessionStr) {
+      const lastSessionDate = new Date(lastSessionStr);
+      const d1 = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+      const d2 = new Date(lastSessionDate.getFullYear(), lastSessionDate.getMonth(), lastSessionDate.getDate());
+      const diffTime = d1.getTime() - d2.getTime();
+      const diffDays = Math.round(diffTime / (1000 * 3600 * 24));
+      if (diffDays > 1) {
+        setWelcomeBackText(`Welcome back. It's been ${diffDays} days since we last spoke. `);
+      }
+    }
+    window.localStorage.setItem('jarvis_last_session', today.toISOString());
+
     fetchReminders();
     fetchMemories();
     fetchMissions();
   }, []);
+
+  // Centralized hook to dynamically update the first welcome message when state updates
+  useEffect(() => {
+    const activeMissionsCount = missions.length;
+    let inProgressTasksCount = 0;
+    missions.forEach(m => {
+      if (Array.isArray(m.tasks)) {
+        m.tasks.forEach(t => {
+          if (!t.completed) {
+            inProgressTasksCount++;
+          }
+        });
+      }
+    });
+
+    const welcomeText = getWelcomeMessage(reminders.length, activeMissionsCount, inProgressTasksCount, welcomeBackText);
+    
+    setMessages(prev => {
+      if (prev.length > 0) {
+        const isWelcomeMessage = (msg) => {
+          return msg.id === 'init' || 
+                 msg.id.startsWith('init-') || 
+                 msg.text.startsWith('JARVIS online.') || 
+                 msg.text.startsWith('Mithun, you have only') || 
+                 msg.text.startsWith('Mithun, your capstone') ||
+                 msg.text.includes("days left before your capstone deadline") ||
+                 msg.text.includes("capstone deadline is");
+        };
+        
+        if (isWelcomeMessage(prev[0])) {
+          const updated = [...prev];
+          updated[0] = { ...updated[0], text: welcomeText };
+          return updated;
+        }
+      }
+      return prev;
+    });
+  }, [reminders, missions, welcomeBackText]);
 
   // Periodic Telemetry Simulator to make meters "dance" in the UI
   useEffect(() => {
@@ -392,6 +461,14 @@ export function JarvisProvider({ children }) {
   const sendMessage = async (text) => {
     if (!text.trim() || isThinking) return;
 
+    streamingMessageIdRef.current = `jarvis-streaming-${Date.now()}`;
+
+    // Extract recent conversation history (last 3 messages) before adding the current one
+    const recentMessages = messages
+      .filter(msg => !msg.id.toString().startsWith('jarvis-streaming'))
+      .slice(-3)
+      .map(msg => `${msg.sender === 'user' ? 'Mithun' : 'JARVIS'}: ${msg.text}`);
+
     const userMsg = {
       id: `msg-${Date.now()}`,
       sender: 'user',
@@ -419,7 +496,8 @@ export function JarvisProvider({ children }) {
         body: JSON.stringify({
           prompt: text,
           user_id: 'user_01',
-          session_id: 'default_session'
+          session_id: 'default_session',
+          recent_messages: recentMessages
         }),
       });
 
@@ -495,9 +573,10 @@ export function JarvisProvider({ children }) {
                     case 'PARTIAL_TEXT':
                       if (event.payload && event.payload.data && event.payload.data.text) {
                         const chunk = event.payload.data.text;
+                        const currentStreamId = streamingMessageIdRef.current || 'jarvis-streaming';
                         setMessages(prev => {
                           const last = prev[prev.length - 1];
-                          if (last && last.id === 'jarvis-streaming') {
+                          if (last && last.id === currentStreamId) {
                             return [
                               ...prev.slice(0, -1),
                               { ...last, text: last.text + chunk }
@@ -506,7 +585,7 @@ export function JarvisProvider({ children }) {
                             return [
                               ...prev,
                               {
-                                id: 'jarvis-streaming',
+                                id: currentStreamId,
                                 sender: 'jarvis',
                                 text: chunk,
                                 timestamp: new Date()
@@ -547,7 +626,7 @@ export function JarvisProvider({ children }) {
       const t3 = setTimeout(() => setExecutionState('Synthesizing Response'), 1800);
 
       try {
-        const response = await sendChatMessage(text);
+        const response = await sendChatMessage(text, 'user_01', recentMessages);
         
         clearTimeout(t1);
         clearTimeout(t2);
@@ -619,13 +698,14 @@ export function JarvisProvider({ children }) {
         });
       }
 
+      const currentStreamId = streamingMessageIdRef.current || `msg-${Date.now() + 1}`;
       setMessages(prev => {
         const last = prev[prev.length - 1];
-        if (last && last.id === 'jarvis-streaming') {
+        if (last && last.id === currentStreamId) {
           return [
             ...prev.slice(0, -1),
             {
-              id: `msg-${Date.now() + 1}`,
+              id: currentStreamId,
               sender: 'jarvis',
               text: finalPayload.message || last.text || 'JARVIS online.',
               action_taken: finalPayload.action_taken || null,
@@ -636,7 +716,7 @@ export function JarvisProvider({ children }) {
           return [
             ...prev,
             {
-              id: `msg-${Date.now() + 1}`,
+              id: currentStreamId,
               sender: 'jarvis',
               text: finalPayload.message || 'JARVIS online.',
               action_taken: finalPayload.action_taken || null,
@@ -708,11 +788,25 @@ export function JarvisProvider({ children }) {
   const resetConversation = async (userId = 'user_01', sessionId = 'default_session') => {
     // 1. Clear local storage and state
     window.localStorage.removeItem('jarvis_chat_session');
+    
+    const activeMissionsCount = missions.length;
+    let inProgressTasksCount = 0;
+    missions.forEach(m => {
+      if (Array.isArray(m.tasks)) {
+        m.tasks.forEach(t => {
+          if (!t.completed) {
+            inProgressTasksCount++;
+          }
+        });
+      }
+    });
+    const welcomeText = getWelcomeMessage(reminders.length, activeMissionsCount, inProgressTasksCount, welcomeBackText);
+
     setMessages([
       {
         id: `init-${Date.now()}`,
         sender: 'jarvis',
-        text: getWelcomeMessage(reminders.length),
+        text: welcomeText,
         timestamp: new Date()
       }
     ]);

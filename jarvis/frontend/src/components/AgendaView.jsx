@@ -17,6 +17,213 @@ export default function AgendaView() {
     setShowAddForm(false);
   };
 
+  const categorizeReminder = (rem) => {
+    if (rem.completed) {
+      const todayDayName = new Date().toLocaleDateString(undefined, { weekday: 'long' });
+      const remDay = rem.day;
+      if (!remDay || remDay.toLowerCase() === 'today' || (rem.type === 'weekly' && remDay.toLowerCase() === todayDayName.toLowerCase())) {
+        return 'today';
+      }
+      return 'upcoming';
+    }
+    
+    const now = new Date();
+    const todayDate = now.getDate();
+    const todayMonth = now.getMonth();
+    const todayYear = now.getFullYear();
+    
+    const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+    const todayDayName = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"][now.getDay()];
+    
+    const remType = rem.type || 'one-time';
+    const remDay = rem.day;
+    const remTime = rem.rawTime || '';
+    
+    let hours = 0;
+    let minutes = 0;
+    if (remTime.includes(':')) {
+      const parts = remTime.split(':');
+      hours = parseInt(parts[0], 10);
+      minutes = parseInt(parts[1], 10);
+    }
+    
+    let isToday = false;
+    let isOverdue = false;
+    
+    let createdDate = rem.created_at ? new Date(rem.created_at) : now;
+    
+    if (remType === 'daily') {
+      isToday = true;
+    } else if (remType === 'weekly') {
+      if (remDay && remDay.toLowerCase() === todayDayName.toLowerCase()) {
+        isToday = true;
+        const remDateTimeToday = new Date(todayYear, todayMonth, todayDate, hours, minutes);
+        if (now > remDateTimeToday) {
+          isOverdue = true;
+        }
+      } else {
+        return 'upcoming';
+      }
+    } else if (remType === 'one-time') {
+      if (!remDay || remDay.toLowerCase() === 'today') {
+        isToday = true;
+        const remDateTimeToday = new Date(todayYear, todayMonth, todayDate, hours, minutes);
+        if (now > remDateTimeToday) {
+          isOverdue = true;
+        }
+      } else if (remDay.toLowerCase() === 'tomorrow') {
+        const diffTime = now.getTime() - createdDate.getTime();
+        const diffDays = diffTime / (1000 * 60 * 60 * 24);
+        
+        const createdDay = createdDate.getDate();
+        const createdMonth = createdDate.getMonth();
+        const createdYear = createdDate.getFullYear();
+        const scheduledDate = new Date(createdYear, createdMonth, createdDay + 1, hours, minutes);
+        
+        if (now.getDate() === scheduledDate.getDate() && now.getMonth() === scheduledDate.getMonth() && now.getFullYear() === scheduledDate.getFullYear()) {
+          isToday = true;
+          if (now > scheduledDate) {
+            isOverdue = true;
+          }
+        } else if (now > scheduledDate) {
+          isOverdue = true;
+        } else {
+          return 'upcoming';
+        }
+      } else {
+        let parsedMonth = -1;
+        let parsedDay = -1;
+        
+        monthNames.forEach((name, idx) => {
+          if (remDay.toLowerCase().includes(name.toLowerCase())) {
+            parsedMonth = idx;
+          }
+        });
+        
+        const numbers = remDay.match(/\d+/);
+        if (numbers) {
+          parsedDay = parseInt(numbers[0], 10);
+        }
+        
+        if (parsedMonth !== -1 && parsedDay !== -1) {
+          const scheduledDate = new Date(todayYear, parsedMonth, parsedDay, hours, minutes);
+          const scheduledDateStart = new Date(todayYear, parsedMonth, parsedDay, 0, 0, 0);
+          const todayStart = new Date(todayYear, todayMonth, todayDate, 0, 0, 0);
+          
+          if (scheduledDateStart.getTime() === todayStart.getTime()) {
+            isToday = true;
+            if (now > scheduledDate) {
+              isOverdue = true;
+            }
+          } else if (now > scheduledDate) {
+            isOverdue = true;
+          } else {
+            return 'upcoming';
+          }
+        } else {
+          return 'upcoming';
+        }
+      }
+    }
+    
+    if (isOverdue) return 'overdue';
+    if (isToday) return 'today';
+    return 'upcoming';
+  };
+
+  const overdueGroup = [];
+  const todayGroup = [];
+  const upcomingGroup = [];
+
+  reminders.forEach(rem => {
+    const category = categorizeReminder(rem);
+    if (category === 'overdue') overdueGroup.push(rem);
+    else if (category === 'today') todayGroup.push(rem);
+    else upcomingGroup.push(rem);
+  });
+
+  const renderReminderCard = (rem) => (
+    <div 
+      key={rem.id}
+      className="cyber-panel"
+      onClick={() => toggleReminder(rem.id)}
+      style={{
+        padding: '16px 20px',
+        borderRadius: '6px',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        cursor: 'pointer',
+        opacity: rem.completed ? 0.5 : 1,
+        borderLeft: rem.completed 
+          ? '3px solid var(--text-dark)' 
+          : (categorizeReminder(rem) === 'overdue' 
+              ? '3px solid var(--accent-pink)' 
+              : '3px solid var(--accent-cyan)'),
+        backgroundColor: 'rgba(10, 14, 24, 0.4)',
+        transition: 'all 0.2s ease',
+        marginBottom: '8px'
+      }}
+    >
+      <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flex: 1, overflow: 'hidden' }}>
+        <span style={{ color: rem.completed ? 'var(--text-dark)' : (categorizeReminder(rem) === 'overdue' ? 'var(--accent-pink)' : 'var(--accent-cyan)'), display: 'flex', alignItems: 'center' }}>
+          {rem.completed ? <CheckCircle2 size={18} /> : <Circle size={18} />}
+        </span>
+        <span style={{
+          fontSize: '13.5px',
+          textDecoration: rem.completed ? 'line-through' : 'none',
+          color: rem.completed ? 'var(--text-secondary)' : 'var(--text-primary)',
+          fontWeight: rem.completed ? 'normal' : '500',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          whiteSpace: 'nowrap'
+        }}>
+          {rem.text}
+        </span>
+      </div>
+      
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: '16px'
+      }}>
+        <div style={{
+          fontSize: '11px',
+          fontFamily: 'var(--font-mono)',
+          color: rem.completed ? 'var(--text-dark)' : (categorizeReminder(rem) === 'overdue' ? 'var(--accent-pink)' : 'var(--accent-orange)'),
+          display: 'flex',
+          alignItems: 'center',
+          gap: '6px'
+        }}>
+          <Clock size={12} />
+          <span>{rem.time.toUpperCase()}</span>
+        </div>
+        
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            removeReminder(rem.id);
+          }}
+          title="Remove Task"
+          style={{
+            background: 'none',
+            border: 'none',
+            color: rem.completed ? 'rgba(255, 255, 255, 0.15)' : 'var(--text-secondary)',
+            cursor: 'pointer',
+            padding: '4px',
+            display: 'flex',
+            alignItems: 'center',
+            transition: 'color 0.2s'
+          }}
+          onMouseEnter={(e) => e.currentTarget.style.color = 'var(--accent-pink)'}
+          onMouseLeave={(e) => e.currentTarget.style.color = rem.completed ? 'rgba(255, 255, 255, 0.15)' : 'var(--text-secondary)'}
+        >
+          <Trash2 size={13} />
+        </button>
+      </div>
+    </div>
+  );
+
   return (
     <div style={{
       display: 'flex',
@@ -236,84 +443,87 @@ export default function AgendaView() {
               </div>
             </div>
           ) : (
-            reminders.map((rem) => (
-              <div 
-                key={rem.id}
-                className="cyber-panel"
-                onClick={() => toggleReminder(rem.id)}
-                style={{
-                  padding: '18px 24px',
-                  borderRadius: '6px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  cursor: 'pointer',
-                  opacity: rem.completed ? 0.5 : 1,
-                  borderLeft: rem.completed 
-                    ? '4px solid var(--text-dark)' 
-                    : '4px solid var(--accent-cyan)',
-                  backgroundColor: 'rgba(10, 14, 24, 0.4)',
-                  transition: 'all 0.2s ease'
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flex: 1, overflow: 'hidden' }}>
-                  <span style={{ color: rem.completed ? 'var(--text-dark)' : 'var(--accent-cyan)', display: 'flex', alignItems: 'center' }}>
-                    {rem.completed ? <CheckCircle2 size={18} /> : <Circle size={18} />}
-                  </span>
-                  <span style={{
-                    fontSize: '14px',
-                    textDecoration: rem.completed ? 'line-through' : 'none',
-                    color: rem.completed ? 'var(--text-secondary)' : 'var(--text-primary)',
-                    fontWeight: rem.completed ? 'normal' : '500',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    whiteSpace: 'nowrap'
-                  }}>
-                    {rem.text}
-                  </span>
-                </div>
-                
-                <div style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '20px'
-                }}>
-                  <div style={{
-                    fontSize: '12px',
-                    fontFamily: 'var(--font-mono)',
-                    color: rem.completed ? 'var(--text-dark)' : 'var(--accent-orange)',
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              {overdueGroup.length > 0 && (
+                <div>
+                  <h3 style={{
+                    fontSize: '11px',
+                    fontFamily: 'var(--font-header)',
+                    color: 'var(--accent-pink)',
+                    fontWeight: 'bold',
+                    letterSpacing: '1px',
+                    margin: '0 0 10px 0',
+                    textTransform: 'uppercase',
                     display: 'flex',
                     alignItems: 'center',
                     gap: '6px'
                   }}>
-                    <Clock size={12} />
-                    <span>{rem.time.toUpperCase()}</span>
-                  </div>
-                  
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      removeReminder(rem.id);
-                    }}
-                    title="Remove Task"
-                    style={{
-                      background: 'none',
-                      border: 'none',
-                      color: rem.completed ? 'rgba(255, 255, 255, 0.15)' : 'var(--text-secondary)',
-                      cursor: 'pointer',
-                      padding: '4px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      transition: 'color 0.2s'
-                    }}
-                    onMouseEnter={(e) => e.currentTarget.style.color = 'var(--accent-pink)'}
-                    onMouseLeave={(e) => e.currentTarget.style.color = rem.completed ? 'rgba(255, 255, 255, 0.15)' : 'var(--text-secondary)'}
-                  >
-                    <Trash2 size={14} />
-                  </button>
+                    <span style={{
+                      width: '6px',
+                      height: '6px',
+                      borderRadius: '50%',
+                      backgroundColor: 'var(--accent-pink)',
+                      boxShadow: 'var(--glow-pink)'
+                    }} />
+                    OVERDUE ({overdueGroup.length})
+                  </h3>
+                  {overdueGroup.map(renderReminderCard)}
                 </div>
-              </div>
-            ))
+              )}
+
+              {todayGroup.length > 0 && (
+                <div>
+                  <h3 style={{
+                    fontSize: '11px',
+                    fontFamily: 'var(--font-header)',
+                    color: 'var(--accent-cyan)',
+                    fontWeight: 'bold',
+                    letterSpacing: '1px',
+                    margin: '8px 0 10px 0',
+                    textTransform: 'uppercase',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px'
+                  }}>
+                    <span style={{
+                      width: '6px',
+                      height: '6px',
+                      borderRadius: '50%',
+                      backgroundColor: 'var(--accent-cyan)',
+                      boxShadow: 'var(--glow-cyan)'
+                    }} />
+                    TODAY ({todayGroup.length})
+                  </h3>
+                  {todayGroup.map(renderReminderCard)}
+                </div>
+              )}
+
+              {upcomingGroup.length > 0 && (
+                <div>
+                  <h3 style={{
+                    fontSize: '11px',
+                    fontFamily: 'var(--font-header)',
+                    color: 'var(--text-secondary)',
+                    fontWeight: 'bold',
+                    letterSpacing: '1px',
+                    margin: '8px 0 10px 0',
+                    textTransform: 'uppercase',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px'
+                  }}>
+                    <span style={{
+                      width: '6px',
+                      height: '6px',
+                      borderRadius: '50%',
+                      backgroundColor: 'var(--text-secondary)'
+                    }} />
+                    UPCOMING ({upcomingGroup.length})
+                  </h3>
+                  {upcomingGroup.map(renderReminderCard)}
+                </div>
+              )}
+            </div>
           )}
         </div>
       </div>

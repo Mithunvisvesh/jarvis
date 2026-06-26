@@ -47,7 +47,7 @@ export default function MissionsView() {
             color: 'var(--text-secondary)',
             fontFamily: 'var(--font-mono)'
           }}>
-            GOAL DECONSTRUCTION NETWORK // OBJECTIVE TRACKING
+            Your active goals and tasks
           </p>
         </div>
       </div>
@@ -75,9 +75,9 @@ export default function MissionsView() {
             opacity: 0.8
           }}>
             <ShieldAlert size={36} style={{ color: 'var(--accent-cyan)' }} />
-            <div>NO ACTIVE MISSION PROFILE FOUND</div>
+            <div>No active missions. Tell me what you're working toward.</div>
             <div style={{ fontSize: '11px', maxWidth: '300px', lineHeight: '1.5' }}>
-              Type a goal-oriented request in the Chat Overlay (e.g., "Help me finish my capstone") to initiate a new deconstructed mission.
+              Type a goal-oriented request in the chat (e.g., "Help me finish my capstone") to initiate a new mission.
             </div>
           </div>
         ) : (

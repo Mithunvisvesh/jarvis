@@ -9,17 +9,16 @@ import DeveloperPanel from './components/DeveloperPanel';
 import AgendaView from './components/AgendaView';
 import KnowledgeView from './components/KnowledgeView';
 import MissionsView from './components/MissionsView';
+import SettingsView from './components/SettingsView';
 import StatusBar from './components/StatusBar';
 
 function Dashboard() {
   const [activeRightTab, setActiveRightTab] = useState('system'); // 'system' | 'memory' | 'logs'
-  const [currentView, setCurrentView] = useState('chat'); // 'chat' | 'agenda' | 'knowledge'
+  const [currentView, setCurrentView] = useState('chat'); // 'chat' | 'agenda' | 'knowledge' | 'missions' | 'settings'
   const { isDeveloperMode } = useJarvis();
 
   return (
     <div className="app-container">
-      {/* Scanline/Grid Overlay for cinematic depth */}
-      <div className="grid-overlay" />
 
       {/* Main Layout containing Sidebar, Chat, and Right Sidebar Panels */}
       <div className="main-layout" style={{
@@ -55,6 +54,7 @@ function Dashboard() {
             {currentView === 'agenda' && <AgendaView />}
             {currentView === 'knowledge' && <KnowledgeView />}
             {currentView === 'missions' && <MissionsView />}
+            {currentView === 'settings' && <SettingsView />}
           </div>
         </div>
 

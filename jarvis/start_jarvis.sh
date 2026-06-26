@@ -22,7 +22,7 @@ echo -e "\e[1;35m   JARVIS COLLABORATIVE AGENT CORE RUNNING                  \e[
 echo -e "\e[1;35m                                                            \e[0m"
 echo -e "\e[1;35m   * Backend Endpoint: http://localhost:8001                \e[0m"
 echo -e "\e[1;35m   * Frontend Dashboard: http://localhost:4173              \e[0m"
-echo -e "\e[1;35m   * Developer Mode: Activate in header (DEV button)        \e[0m"
+echo -e "\e[1;35m   * Developer Mode: Activate in Settings/SYSTEM            \e[0m"
 echo -e "\e[1;35m============================================================\e[0m"
 
 # Graceful termination handler

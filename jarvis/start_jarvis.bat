@@ -32,7 +32,7 @@ echo    JARVIS COLLABORATIVE AGENT CORE RUNNING
 echo 
 echo    * Backend Endpoint: http://localhost:8001
 echo    * Frontend Dashboard: http://localhost:4173
-echo    * Developer Mode: Activate in header (DEV button)
+echo    * Developer Mode: Activate in Settings/SYSTEM
 echo ============================================================
 echo Press any key to stop all window tasks or close the opened windows.
 pause

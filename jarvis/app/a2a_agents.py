@@ -1,4 +1,5 @@
 import time
+from datetime import datetime
 from typing import Dict, Any, Callable, List
 from pydantic import BaseModel
 from google.genai import Client
@@ -161,7 +162,7 @@ class BackgroundDataAgent(A2AAgentBase):
                 client = Client()
                 response = client.models.generate_content(
                     model="gemini-2.5-flash",
-                    contents=f"Break down this goal into 5–7 concrete tasks: '{prompt}'. Return a JSON array of task strings.",
+                    contents=f"{CORE_USER_CONTEXT}\nThe user wants help with: '{prompt}'.\nBreak this into 5-7 specific, actionable tasks tailored to Mithun's context and the capstone deadline. Return a JSON array of task strings.",
                     config=types.GenerateContentConfig(
                         response_mime_type="application/json"
                     )
@@ -237,14 +238,16 @@ class BackgroundDataAgent(A2AAgentBase):
 class UIFrontendAgent(A2AAgentBase):
     def __init__(self):
         super().__init__("UI_Frontend_Agent")
-        self.system_prompt = (
+        self.base_prompt = (
             "You are JARVIS, an AI Operating Companion.\n"
             f"Core User Context:\n{CORE_USER_CONTEXT}\n\n"
             "NEVER use robotic, terminal-like, or third-person system language "
             "(e.g., avoid 'System updated', 'Action executed', 'Data fetched', 'Operational reminder parsed').\n"
             "Speak directly to the user in a calm, highly capable, and conversational tone.\n\n"
-            "When responding to general chat, simple greetings, or conversational prompts, respond warmly, politely, and concisely.\n\n"
-            "Proactive Next Step Protocol:\n"
+            "When responding to general chat, simple greetings, or conversational prompts, respond warmly, politely, and concisely."
+        )
+        self.proactive_prompt = (
+            "\n\nProactive Next Step Protocol:\n"
             "When resolving a complex query or completing a task (anything outside of a simple greeting), "
             "you must conclude your response with a single, highly relevant proactive suggestion or follow-up question "
             "predicting the user's next need. Keep this suggestion brief (exactly one sentence).\n\n"
@@ -256,6 +259,7 @@ class UIFrontendAgent(A2AAgentBase):
             "- Bad: 'System diagnostics report: CPU Load: 28%.'\n"
             "  Good: 'Here is your system diagnostics report. Everything is running smoothly: CPU Load is at 28%. Shall I run an optimization script to clean up memory?'\n"
         )
+        self.system_prompt = self.base_prompt + self.proactive_prompt
         self.system_instruction = self.system_prompt
 
     def _generate_and_stream(self, contents: Any, system_instruction: str, workflow_id: str, request_id: str) -> str:
@@ -302,6 +306,20 @@ class UIFrontendAgent(A2AAgentBase):
         route = intent
         action_taken = None
 
+        recent_messages = raw_data.get("recent_messages", [])
+        if not recent_messages and hasattr(self, "recent_messages") and self.recent_messages:
+            recent_messages = self.recent_messages
+
+        is_greeting = False
+        if prompt:
+            is_greeting = any(g in prompt.lower().strip() for g in ["hi", "hello", "hey", "yo", "greetings", "good morning", "good afternoon", "good evening"]) and len(prompt.strip()) < 15
+
+        # Determine which prompt style to use (only SYSTEM, MISSION, and CHAT intents get proactive next-step suggestions, and never simple greetings)
+        if intent in ["SYSTEM", "MISSION", "CHAT"] and not is_greeting:
+            sys_instruction = self.system_prompt
+        else:
+            sys_instruction = self.base_prompt
+
         if intent == "TOOL_FAILURE":
             failed_intent = raw_data.get("failed_intent", "SYSTEM")
             error_msg = raw_data.get("error", "Unknown connection error")
@@ -310,7 +328,7 @@ class UIFrontendAgent(A2AAgentBase):
             try:
                 message = self._generate_and_stream(
                     contents=f"A connection or system error occurred while executing the user request (intent: '{failed_intent}', error: '{error_msg}'). Write a calm, reassuring, conversational apology explaining that we are having connection issues but are online and ready to assist.",
-                    system_instruction=self.system_prompt,
+                    system_instruction=self.base_prompt,
                     workflow_id=workflow_id,
                     request_id=request_id
                 )
@@ -332,7 +350,7 @@ class UIFrontendAgent(A2AAgentBase):
             try:
                 message = self._generate_and_stream(
                     contents=f"System stats gathered: CPU: {cpu_load}%, RAM: {ram_load}%, Disk: {disk_load}%, GPU: {gpu_load}%. Formulate a diagnostics report.",
-                    system_instruction=self.system_prompt,
+                    system_instruction=sys_instruction,
                     workflow_id=workflow_id,
                     request_id=request_id
                 )
@@ -362,23 +380,28 @@ class UIFrontendAgent(A2AAgentBase):
                 try:
                     message = self._generate_and_stream(
                         contents=f"Stored new fact in memory: '{stored_fact}'. Inform the user.",
-                        system_instruction=self.system_prompt,
+                        system_instruction=self.base_prompt,
                         workflow_id=workflow_id,
                         request_id=request_id
                     )
                 except Exception:
                     pass
                 if not message:
-                    message = (
-                        f"I've noted that down for you: \"{stored_fact}\". "
-                        f"Would you like me to check if there are other related details in your database?"
-                    )
+                    message = f"I've noted that down for you: \"{stored_fact}\"."
                     self._stream_fallback(message, workflow_id, request_id)
             
         elif intent == "MEMORY_RECALL":
             result = raw_data.get("recalled_fact", {})
             fact = result.get("fact") if result else None
             confidence = result.get("confidence", 0.0) if result else 0.0
+            created_at_raw = result.get("created_at") if result else None
+            date_str = ""
+            if created_at_raw:
+                try:
+                    dt = datetime.fromisoformat(created_at_raw)
+                    date_str = dt.strftime("%B %d, %Y")
+                except Exception:
+                    date_str = created_at_raw.split("T")[0]
             
             if confidence < 0.50 or not fact:
                 message = "I don't have a reliable memory for that."
@@ -387,13 +410,18 @@ class UIFrontendAgent(A2AAgentBase):
             else:
                 action_taken = f"Memory Engine: Recalled fact matching semantic query (Confidence: {int(confidence*100)}%)"
                 try:
-                    sys_instruction = self.system_prompt + "\nSynthesize a concise answer to the user query based on the stored fact."
+                    sys_instruction_recall = self.base_prompt + "\nSynthesize a concise answer to the user query based on the stored fact."
                     if confidence < 0.80:
-                        sys_instruction += " Express uncertainty or tell the user you are not entirely sure, but recall this fact."
+                        sys_instruction_recall += " Express uncertainty or tell the user you are not entirely sure, but recall this fact."
+                    
+                    prompt_content = f"The user asked about this. Fact: '{fact}'"
+                    if date_str:
+                        prompt_content += f" (stored on {date_str})"
+                    prompt_content += f". Respond naturally, referencing when you learned this if it feels natural. User Query: '{prompt}'."
                     
                     message = self._generate_and_stream(
-                        contents=f"User Query: '{prompt}'. Stored Fact: '{fact}'.",
-                        system_instruction=sys_instruction,
+                        contents=prompt_content,
+                        system_instruction=sys_instruction_recall,
                         workflow_id=workflow_id,
                         request_id=request_id
                     )
@@ -401,15 +429,9 @@ class UIFrontendAgent(A2AAgentBase):
                     pass
                 if not message:
                     if confidence >= 0.80:
-                        message = (
-                            f"Based on my memory, {fact}. "
-                            f"Would you like me to find any other details related to this?"
-                        )
+                        message = f"Based on my memory, {fact}."
                     else:
-                        message = (
-                            f"I am not entirely sure, but I recall: {fact}. "
-                            f"Would you like me to verify this information or look deeper?"
-                        )
+                        message = f"I am not entirely sure, but I recall: {fact}."
                     self._stream_fallback(message, workflow_id, request_id)
                         
         elif intent == "REMINDER":
@@ -418,17 +440,14 @@ class UIFrontendAgent(A2AAgentBase):
             try:
                 message = self._generate_and_stream(
                     contents=f"Created reminder in agenda: title='{reminder.get('title')}', time='{reminder.get('time')}', day='{reminder.get('day')}', type='{reminder.get('type')}', status='pending'. Inform the user.",
-                    system_instruction=self.system_prompt,
+                    system_instruction=self.base_prompt,
                     workflow_id=workflow_id,
                     request_id=request_id
                 )
             except Exception:
                 pass
             if not message:
-                message = (
-                    f"I've added \"{reminder.get('title')}\" to your agenda. I will make sure you don't miss it. "
-                    f"Would you like me to set a recurring reminder for this task?"
-                )
+                message = f"I've added \"{reminder.get('title')}\" to your agenda. I will make sure you don't miss it."
                 self._stream_fallback(message, workflow_id, request_id)
             
         elif intent == "MISSION":
@@ -448,7 +467,7 @@ class UIFrontendAgent(A2AAgentBase):
                         f"'{title}', and present the tasks as a clean bulleted or numbered list. "
                         f"Explain that these tasks are now tracked in their Missions panel. Conclude with a single proactive suggestion."
                     ),
-                    system_instruction=self.system_prompt,
+                    system_instruction=sys_instruction,
                     workflow_id=workflow_id,
                     request_id=request_id
                 )
@@ -466,10 +485,15 @@ class UIFrontendAgent(A2AAgentBase):
             
         else:
             # Default CHAT fallback using gemini-2.5-flash
+            chat_contents = prompt
+            if recent_messages:
+                last_three = recent_messages[-3:]
+                history_str = "\n".join(last_three)
+                chat_contents = f"Recent conversation context:\n{history_str}\n\nUser now asks: {prompt}"
             try:
                 message = self._generate_and_stream(
-                    contents=prompt,
-                    system_instruction=self.system_prompt,
+                    contents=chat_contents,
+                    system_instruction=sys_instruction,
                     workflow_id=workflow_id,
                     request_id=request_id
                 )

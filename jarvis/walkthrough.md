@@ -305,3 +305,102 @@ We upgraded the system's orchestrator routing logic to use real-time LLM reasoni
 ### 2. Programmatic AgentEvaluator Test
 - **Honest Test Case**: Created [test_agent_evaluator.py](https://github.com/Mithunvisvesh/jarvis/blob/main/tests/integration/test_agent_evaluator.py) implementing a helper class `AgentEvaluator`.
 - **Validation Assertion**: The test instantiates the evaluator, queries the FastAPI server with a user prompt, and asserts that the returned `route` is a valid string matching one of the active intents, ensuring the evaluation claims are fully accurate.
+
+---
+
+## 🛠️ Day 4: Demo Script & Settings Stub
+
+We completed the Day 4 tasks of the Final Sprint Master Plan to establish a professional system settings dashboard, consolidate Developer Mode controls, and document the showcase narrative:
+
+### 1. Centralized System Settings & Diagnostics
+- **Created Settings Component** ([SettingsView.jsx](https://github.com/Mithunvisvesh/jarvis/blob/main/frontend/src/components/SettingsView.jsx)): Implemented a premium cyber-styled system panel housing:
+  - **JARVIS Identity Matrix**: Read-only display of operator details (`CORE_USER_CONTEXT`).
+  - **Developer Mode Toggle**: Consolidated Developer Mode controls from the chat interface header into a single toggle switch under System diagnostics.
+  - **Session Management Matrix**: Implemented "Clear Chat", "Wipe Memories", and "Reset Conversation" actions utilizing robust 4-second confirmation timers to prevent accidental demo resets.
+  - **Integrations Matrix**: Added stylized placeholders with `PLANNED` badges representing future GitHub, Notion, and Google Calendar integrations.
+  - **About JARVIS Footer**: Displays system engine specifications, ADK versioning, and build metadata.
+
+### 2. Navigation Routing & Sidebar Integration
+- **Sidebar Integration** ([Sidebar.jsx](https://github.com/Mithunvisvesh/jarvis/blob/main/frontend/src/components/Sidebar.jsx)): Replaced the bottom Dev Mode toggle button with a system settings gear icon (`Settings`) labeled `SYSTEM`. When clicked, it swaps the active viewport routing to `'settings'`.
+- **App view manager routing** ([App.jsx](https://github.com/Mithunvisvesh/jarvis/blob/main/frontend/src/App.jsx)): Registered the `'settings'` routing case in the workspace panel to render `<SettingsView />` dynamically.
+
+### 3. Judges' Showcase Narrative Script
+- **Demo Script** ([demo_script.md](file:///C:/Users/mithu/.gemini/antigravity/brain/a49dc9dd-ed96-4fe3-9e26-98763cfbe88a/demo_script.md)): Drafted a comprehensive step-by-step demonstration manual guiding the user on how to showcase personalized greetings, speech capture with pulsating sigils, routing progress indicators, MCP execution logs, context-aware missions, and developer tracing in a tight 60-second window.
+
+---
+
+## 🛠️ Day 5: Polish & prefers-reduced-motion
+
+We addressed motion control accessibility, spacing scale validation, CPU optimization, and competition documentation:
+
+### 1. Reduced Motion Accessibility & CSS Polish
+- **Accessibility media query**: Appended a `@media (prefers-reduced-motion: reduce)` block in [index.css](https://github.com/Mithunvisvesh/jarvis/blob/main/frontend/src/index.css) to silence keyframe animation properties and set transitions to `0ms`.
+- **Design system variables**: Injected a comprehensive spacing scale (`--space-1` to `--space-24`), typography sizing rules (`--text-xs` to `--text-3xl`), and border radius metrics (`--radius-sm` to `--radius-full`) inside `:root` block.
+- **CPU Optimization**: Purged the redundant `.flicker` class styling and `text-flicker` keyframes.
+
+### 2. Accident-Resistant "New Session" Confirmation
+- **Two-stage confirmation**: Configured the reset button in [ChatInterface.jsx](https://github.com/Mithunvisvesh/jarvis/blob/main/frontend/src/components/ChatInterface.jsx) to label initially as `"New Session"`. On first tap, it registers a `3-second` timeout, glows bright red, and shows `"Confirm?"`. A second tap executes the reset, preventing accidental loss of demo context.
+
+### 3. Official Competition writeup
+- **Writeup Creation** ([competition_writeup.md](file:///C:/Users/mithu/.gemini/antigravity/brain/a49dc9dd-ed96-4fe3-9e26-98763cfbe88a/competition_writeup.md)): Formulated a structured overview covering graph orchestration topology, A2A messaging buses, subprocess MCP connections, security compliance protocols, and future engineering milestones.
+
+---
+
+## 🛠️ Day 6: Final Demo Polish & Video Recording Prep
+
+We audited the entire codebase to verify visual styling alignment, context-aware mission deconstructions, and speech recognition fallback messages:
+
+### 1. Context-Aware Mission Deconstruction Verification
+- Confirmed that the `BackgroundDataAgent` in [a2a_agents.py](https://github.com/Mithunvisvesh/jarvis/blob/main/app/a2a_agents.py) successfully interpolates Mithun's CSE student profile and deadline to deconstruct goals into context-aware checklist milestones.
+
+### 2. Observability & Speech Tooltips
+- Checked that the **DEVELOPER MODE** event telemetry and flow diagrams in [DeveloperPanel.jsx](https://github.com/Mithunvisvesh/jarvis/blob/main/frontend/src/components/DeveloperPanel.jsx) calculate and output latency timelines cleanly.
+- Updated the push-to-talk microphone button title/tooltip inside [ChatInterface.jsx](https://github.com/Mithunvisvesh/jarvis/blob/main/frontend/src/components/ChatInterface.jsx) to guide the operator that Chrome, Edge, or Safari are required for capturing voice inputs.
+
+---
+
+## 🛠️ Day 7: Documentation & README
+
+We established complete developer and contest instructions, and audited architecture sequences:
+
+### 1. Unified Setup Instructions & Root README
+- **Root README** ([README.md](file:///d:/mithun_files/Personal/5-Day%20AI%20Agents%20Intensive%20Vibe%20Coding%20Course%20With%20Google/Capstone%20Project/jarvis/README.md)): Drafted a comprehensive, immersive document covering setup details, quick starts (for Windows shell batches and macOS/Linux bash scripts), environment secrets configuration, and Developer Mode guidelines.
+- **Capability Status Matrix**: Integrated an honest status table mapping out 12 key agent system features (Pydantic buses, graph agents, MCP stdio channels, task checkers) with status indicators and details.
+
+### 2. Architecture Specifications Audit
+- **Sequence Diagram Sync** ([ARCHITECTURE.md](file:///d:/mithun_files/Personal/5-Day%20AI%20Agents%20Intensive%20Vibe%20Coding%20Course%20With%20Google/Capstone%20Project/jarvis/ARCHITECTURE.md)): Modified the main multi-agent Sequence diagram to accurately reflect the sequential Event Bus interactions of `BackgroundDataAgent` and `UIFrontendAgent`, replacing outdated sub-agent labels.
+- **Verification**: Verified that Vite compiled cleanly and all test suites remain nominal.
+
+---
+
+## 🛠️ Day 8: Bug Hunt & Edge Cases
+
+We focused on resolving edge-case behaviors, visual stutters, network rate limits, and audio states:
+
+### 1. Robust Speech Recognition & Control Safety
+- **Browser Capability State**: Added dynamic capability detection state `isSpeechSupported` in [ChatInterface.jsx](file:///d:/mithun_files/Personal/5-Day%20AI%20Agents%20Intensive%20Vibe%20Coding%20Course%20With%20Google/Capstone%20Project/jarvis/frontend/src/components/ChatInterface.jsx) to only show the `Mic` icon when SpeechRecognition is supported by the browser, otherwise displaying `MicOff`.
+- **Exception Guards**: Wrapped recognition starts and stops in `try-catch` blocks to protect against unexpected DOMExceptions in active listening toggles.
+- **Pulsing Animation**: Defined keyframe animations for `.mic-listening` in [index.css](file:///d:/mithun_files/Personal/5-Day%20AI%20Agents%20Intensive%20Vibe%20Coding%20Course%20With%20Google/Capstone%20Project/jarvis/frontend/src/index.css) to supply organic visual breathing feedback when active.
+
+### 2. Stream ID Stability & Optimistic Updates
+- **Eliminating Animation Stutter**: Refactored the token streaming message keys using a React `useRef` to store a stable message ID for the incoming stream. This preserves the component key map on stream completion, preventing the slide-in animation from repeating.
+- **Optimistic Task Checking**: Updated `toggleMissionTask` in [JarvisContext.jsx](file:///d:/mithun_files/Personal/5-Day%20AI%20Agents%20Intensive%20Vibe%20Coding%20Course%20With%20Google/Capstone%20Project/jarvis/frontend/src/context/JarvisContext.jsx) to immediately toggle local mission checkbox states and recalculate progress bars optimistically. Added safety rollback functions that revert state to match the backend in case of database or connection failures.
+
+### 3. Verification & Validation
+- **Unit and Integration Tests**: Ran and confirmed that all 28 Python backend test suites passed (in 91.37s).
+- **Vite Compilation**: Re-ran the Vite compiler. Production assets compiled successfully with no lint or typescript warnings.
+
+---
+
+## 🛠️ Day 9: Final Kaggle Submission Prep
+
+We completed packaging, scripting, documentation updates, and deployment checks for final submission:
+
+### 1. Finalizing Competition Artifacts
+- **Competition Writeup** ([competition_writeup.md](file:///d:/mithun_files/Personal/5-Day%20AI%20Agents%20Intensive%20Vibe%20Coding%20Course%20With%20Google/Capstone%20Project/jarvis/competition_writeup.md)): Extracted, polished, and copied the finalized writeup into the project root. It provides a structured summary of Overview, Architecture, Capabilities, Security, Evaluation, and Roadmap.
+- **Docker Setup Refactoring** ([Dockerfile](file:///d:/mithun_files/Personal/5-Day%20AI%20Agents%20Intensive%20Vibe%20Coding%20Course%20With%20Google/Capstone%20Project/jarvis/Dockerfile)): Removed process substitution `<(...)` from the dependency compile step, replacing it with a robust `requirements.txt` file generation pipeline to ensure compatibility with standard `/bin/sh` shell runtimes.
+- **Architecture Documentation Sync** ([ARCHITECTURE.md](file:///d:/mithun_files/Personal/5-Day%20AI%20Agents%20Intensive%20Vibe%20Coding%20Course%20With%20Google/Capstone%20Project/jarvis/ARCHITECTURE.md)): Added Section 5 detailing front-end rendering performance optimizations (stable stream keys, optimistic task checklist states, and microphone support checks).
+
+### 2. Scripting & Developer Support
+- **Startup Script Sync**: Updated both [start_jarvis.sh](file:///d:/mithun_files/Personal/5-Day%20AI%20Agents%20Intensive%20Vibe%20Coding%20Course%20With%20Google/Capstone%20Project/jarvis/start_jarvis.sh) and [start_jarvis.bat](file:///d:/mithun_files/Personal/5-Day%20AI%20Agents%20Intensive%20Vibe%20Coding%20Course%20With%20Google/Capstone%20Project/jarvis/start_jarvis.bat) print statements to guide developers to the Settings/SYSTEM view for Developer Mode rather than referencing the decommissioned header button.
+- **Vite Compilation**: Re-ran Vite compiler inside the frontend. Build completed cleanly in 457ms.
