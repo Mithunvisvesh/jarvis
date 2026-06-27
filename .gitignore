@@ -1,5 +1,0 @@
-# JARVIS local databases & runtime logs
-jarvis/data/
-jarvis/data/*.json
-jarvis/logs/
-jarvis/logs/*.json

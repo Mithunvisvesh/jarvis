@@ -13,7 +13,8 @@ import {
   toggleMissionTask as toggleMissionTaskApi,
   deleteMission as deleteMissionApi,
   wipeDatabaseApi,
-  wipeMemoriesApi
+  wipeMemoriesApi,
+  API_BASE_URL
 } from '../services/api';
 
 const JarvisContext = createContext(undefined);
@@ -126,7 +127,7 @@ export function JarvisProvider({ children }) {
         timestamp: new Date()
       },
       ...prev
-    ]);
+    ].slice(0, 100));
   };
 
   // Fetch all reminders from the backend
@@ -490,7 +491,7 @@ export function JarvisProvider({ children }) {
 
     try {
       // 1. Try SSE Stream Endpoint
-      const response = await fetch('http://localhost:8001/api/chat/stream', {
+      const response = await fetch(`${API_BASE_URL}/api/chat/stream`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -767,7 +768,7 @@ export function JarvisProvider({ children }) {
 
   const wipeSessionContext = async (userId = 'user_01', sessionId = 'default_session') => {
     try {
-      const response = await fetch('http://localhost:8001/clear_session', {
+      const response = await fetch(`${API_BASE_URL}/api/chat/clear_session`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -853,7 +854,7 @@ export function JarvisProvider({ children }) {
 
     // 2. Call backend /clear_session
     try {
-      const response = await fetch('http://localhost:8001/clear_session', {
+      const response = await fetch(`${API_BASE_URL}/api/chat/clear_session`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

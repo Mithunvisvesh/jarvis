@@ -254,7 +254,7 @@ function SessionManagementSection({
         }}>
           <div>
             <span style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'var(--text-primary)', fontWeight: 'bold' }}>WIPE MEMORY DATABASE</span>
-            <p style={{ margin: '4px 0 0 0', fontSize: '9px', color: 'var(--text-secondary)' }}>Erases all backend database entries including scheduled agenda tasks and memorized facts.</p>
+            <p style={{ margin: '4px 0 0 0', fontSize: '9px', color: 'var(--text-secondary)' }}>Clears your stored memory facts. Missions and reminders are not affected.</p>
           </div>
           <button
             onClick={handleWipeClick}
