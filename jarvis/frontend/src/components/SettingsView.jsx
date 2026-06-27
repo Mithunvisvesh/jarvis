@@ -471,7 +471,7 @@ export default function SettingsView() {
     isDeveloperMode, 
     setIsDeveloperMode, 
     clearChat, 
-    wipeDatabase, 
+    wipeMemories, 
     resetConversation
   } = useJarvis();
 
@@ -508,7 +508,7 @@ export default function SettingsView() {
       }, 4000);
     } else {
       if (wipeTimerRef.current) clearTimeout(wipeTimerRef.current);
-      await wipeDatabase();
+      await wipeMemories();
       setWipeStage(0);
     }
   };

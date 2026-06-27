@@ -12,7 +12,8 @@ import {
   getMissions,
   toggleMissionTask as toggleMissionTaskApi,
   deleteMission as deleteMissionApi,
-  wipeDatabaseApi
+  wipeDatabaseApi,
+  wipeMemoriesApi
 } from '../services/api';
 
 const JarvisContext = createContext(undefined);
@@ -805,6 +806,21 @@ export function JarvisProvider({ children }) {
     return false;
   };
 
+  const wipeMemories = async () => {
+    try {
+      const res = await wipeMemoriesApi();
+      if (res && res.status === 'success') {
+        addTimelineEvent('system', 'Backend memories database wiped (facts only).');
+        setMemories([]);
+        await fetchMemories();
+        return true;
+      }
+    } catch (err) {
+      console.error("Failed to wipe memories:", err);
+    }
+    return false;
+  };
+
   const resetConversation = async (userId = 'user_01', sessionId = 'default_session') => {
     // 1. Clear local storage and state
     window.localStorage.removeItem('jarvis_chat_session');
@@ -849,12 +865,18 @@ export function JarvisProvider({ children }) {
       });
       if (response.ok) {
         addTimelineEvent('system', 'Session context and working memory wiped on backend.');
-        return true;
       }
     } catch (err) {
       console.error("Failed to wipe session context on backend:", err);
     }
-    return false;
+    
+    // Also clear other local states!
+    setMissions([]);
+    setReminders([]);
+    setMemories([]);
+    // Wipe all databases on backend!
+    await wipeDatabaseApi();
+    return true;
   };
 
   return (
@@ -882,6 +904,7 @@ export function JarvisProvider({ children }) {
       clearChat,
       wipeSessionContext,
       wipeDatabase,
+      wipeMemories,
       resetConversation,
       missions,
       fetchMissions,

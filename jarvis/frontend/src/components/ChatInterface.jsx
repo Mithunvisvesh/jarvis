@@ -251,9 +251,9 @@ export default function ChatInterface() {
   };
 
   const quickPrompts = [
-    { text: 'Check my system stats', label: 'SYS_CHECK' },
-    { text: 'Schedule a reminder', label: 'ADD_REMINDER' },
-    { text: 'Help me finish my capstone', label: 'MISSION' }
+    { text: 'Check my system stats' },
+    { text: 'Schedule a reminder' },
+    { text: 'Help me finish my capstone' }
   ];
 
   return (
@@ -653,9 +653,7 @@ export default function ChatInterface() {
                   borderRadius: '3px',
                   cursor: 'pointer',
                   transition: 'all 0.2s',
-                  fontWeight: '600',
-                  display: 'flex',
-                  alignItems: 'center'
+                  fontWeight: '600'
                 }}
                 onMouseEnter={(e) => {
                   e.currentTarget.style.borderColor = 'var(--accent-cyan)';
@@ -666,18 +664,6 @@ export default function ChatInterface() {
                   e.currentTarget.style.boxShadow = 'none';
                 }}
               >
-                <span style={{
-                  fontSize: '8px',
-                  backgroundColor: 'rgba(0, 212, 255, 0.15)',
-                  color: 'var(--accent-cyan)',
-                  padding: '1px 4px',
-                  borderRadius: '2px',
-                  marginRight: '6px',
-                  fontFamily: 'var(--font-mono)',
-                  letterSpacing: '0.5px'
-                }}>
-                  {p.label}
-                </span>
                 {p.text}
               </button>
             ))}

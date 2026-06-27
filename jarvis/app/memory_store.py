@@ -165,7 +165,7 @@ def derive_mission_title(goal: str) -> str:
 
 
 def add_mission(title: str, goal: str, tasks: list) -> dict:
-    """Creates a new mission in memory.json and returns it."""
+    """Creates a new mission in missions.json and returns it."""
     missions = load_missions()
     
     # Check if a mission with the same title already exists
@@ -228,4 +228,10 @@ def clear_memory_store():
         json.dump({"facts": []}, f)
     with open(MISSIONS_FILE, "w", encoding="utf-8") as f:
         json.dump([], f)
+
+
+def clear_facts():
+    ensure_data_dir()
+    with open(FACTS_FILE, "w", encoding="utf-8") as f:
+        json.dump({"facts": []}, f)
 
