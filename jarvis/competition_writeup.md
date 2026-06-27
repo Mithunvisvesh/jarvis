@@ -2,7 +2,7 @@
 
 ## 1. Project Overview
 
-**JARVIS** (Just A Rather Very Intelligent System) is a cyber-styled, context-aware AI operating companion built for student developers to streamline project delivery, memory management, and daily agendas. It is tailored specifically for operator **Mithun**, a 4th-semester B.Tech Computer Science student, providing personalized deadline tracking and contextual goals. What makes JARVIS stand out from general-purpose chatbots is its synthesis of deep episodic memory deduplication, context-aware mission deconstruction, and real-time hardware diagnostics via subprocessed Model Context Protocol (MCP) nodes.
+**JARVIS** (Just A Rather Very Intelligent System) is an offline-first, event-driven multi-agent workspace companion built on the **Google Agent Development Kit (ADK) 2.0** and the **Model Context Protocol (MCP)**, engineered to streamline project delivery, memory management, and daily agendas for developers. It is tailored specifically for operator **Mithun**, a 4th-semester B.Tech Computer Science student, providing personalized deadline tracking and contextual goals. What makes JARVIS stand out from general-purpose chatbots is its synthesis of deep episodic memory deduplication, context-aware mission deconstruction, and real-time hardware diagnostics via subprocessed Model Context Protocol (MCP) nodes.
 
 ---
 

@@ -1,9 +1,31 @@
-import React from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useJarvis } from '../context/JarvisContext';
 import { Target, CheckSquare, Square, Trash2, ShieldAlert } from 'lucide-react';
 
 export default function MissionsView() {
   const { missions, toggleMissionTask, removeMission } = useJarvis();
+  const [confirmingDeleteId, setConfirmingDeleteId] = useState(null);
+  const confirmTimeoutRef = useRef(null);
+
+  const handleDeleteClick = (missionId) => {
+    if (confirmingDeleteId === missionId) {
+      if (confirmTimeoutRef.current) clearTimeout(confirmTimeoutRef.current);
+      removeMission(missionId);
+      setConfirmingDeleteId(null);
+    } else {
+      setConfirmingDeleteId(missionId);
+      if (confirmTimeoutRef.current) clearTimeout(confirmTimeoutRef.current);
+      confirmTimeoutRef.current = setTimeout(() => {
+        setConfirmingDeleteId(null);
+      }, 3000);
+    }
+  };
+
+  useEffect(() => {
+    return () => {
+      if (confirmTimeoutRef.current) clearTimeout(confirmTimeoutRef.current);
+    };
+  }, []);
 
   return (
     <div style={{
@@ -128,20 +150,30 @@ export default function MissionsView() {
                   </div>
                   
                   <button 
-                    onClick={() => removeMission(mission.id)}
+                    onClick={() => handleDeleteClick(mission.id)}
                     style={{
                       background: 'transparent',
                       border: 'none',
-                      color: 'var(--text-secondary)',
+                      color: confirmingDeleteId === mission.id ? 'var(--accent-pink)' : 'var(--text-secondary)',
                       cursor: 'pointer',
-                      transition: 'color 0.2s',
-                      padding: '4px'
+                      transition: 'all 0.2s',
+                      padding: '4px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      fontSize: '10px',
+                      fontFamily: 'var(--font-mono)'
                     }}
-                    onMouseEnter={(e) => e.currentTarget.style.color = 'var(--accent-pink)'}
-                    onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-secondary)'}
-                    title="DISMISS MISSION"
+                    title={confirmingDeleteId === mission.id ? "CONFIRM DISMISS?" : "DISMISS MISSION"}
                   >
-                    <Trash2 size={16} />
+                    {confirmingDeleteId === mission.id ? (
+                      <>
+                        <span style={{ fontSize: '9px', fontWeight: 'bold', color: 'var(--accent-pink)' }}>CONFIRM?</span>
+                        <Trash2 size={14} style={{ color: 'var(--accent-pink)' }} />
+                      </>
+                    ) : (
+                      <Trash2 size={16} />
+                    )}
                   </button>
                 </div>
 

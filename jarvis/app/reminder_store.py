@@ -107,3 +107,9 @@ def get_due_reminders(current_dt=None) -> list:
                     due.append(rem)
                     
     return due
+
+
+def clear_reminders():
+    ensure_data_dir()
+    with open(REMINDERS_FILE, "w", encoding="utf-8") as f:
+        json.dump([], f)

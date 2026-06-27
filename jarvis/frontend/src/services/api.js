@@ -230,3 +230,16 @@ export async function deleteMission(missionId) {
   }
 }
 
+export async function wipeDatabaseApi() {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/db/clear`, {
+      method: "POST",
+    });
+    if (!response.ok) throw new Error("Failed to clear backend database");
+    return await response.json();
+  } catch (error) {
+    console.error("wipeDatabaseApi failed:", error);
+    return null;
+  }
+}
+

@@ -50,6 +50,7 @@ function SystemStatus({ executionState, isConnected }) {
 }
 
 const stagePercentages = {
+  'Idle': 100,
   'Analyzing Request': 25,
   'Routing Intent': 50,
   'Running System Tools': 75,
@@ -593,7 +594,7 @@ export default function ChatInterface() {
                 letterSpacing: '0.5px'
               }}>
                 <span>{executionState}</span>
-                <span style={{ color: 'var(--accent-cyan)' }}>{stagePercentages[executionState] || 50}%</span>
+                <span style={{ color: 'var(--accent-cyan)' }}>{stagePercentages[executionState] || 100}%</span>
               </div>
               
               {/* Progress track */}
@@ -608,7 +609,7 @@ export default function ChatInterface() {
                 {/* Progress bar fill */}
                 <div style={{
                   height: '100%',
-                  width: `${stagePercentages[executionState] || 50}%`,
+                  width: `${stagePercentages[executionState] || 100}%`,
                   backgroundColor: 'var(--accent-cyan)',
                   boxShadow: 'var(--glow-cyan)',
                   borderRadius: '2px',
@@ -652,7 +653,9 @@ export default function ChatInterface() {
                   borderRadius: '3px',
                   cursor: 'pointer',
                   transition: 'all 0.2s',
-                  fontWeight: '600'
+                  fontWeight: '600',
+                  display: 'flex',
+                  alignItems: 'center'
                 }}
                 onMouseEnter={(e) => {
                   e.currentTarget.style.borderColor = 'var(--accent-cyan)';
@@ -663,6 +666,18 @@ export default function ChatInterface() {
                   e.currentTarget.style.boxShadow = 'none';
                 }}
               >
+                <span style={{
+                  fontSize: '8px',
+                  backgroundColor: 'rgba(0, 212, 255, 0.15)',
+                  color: 'var(--accent-cyan)',
+                  padding: '1px 4px',
+                  borderRadius: '2px',
+                  marginRight: '6px',
+                  fontFamily: 'var(--font-mono)',
+                  letterSpacing: '0.5px'
+                }}>
+                  {p.label}
+                </span>
                 {p.text}
               </button>
             ))}

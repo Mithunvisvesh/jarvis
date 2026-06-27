@@ -15,8 +15,8 @@ from google.genai import types
 from app.agent import app as adk_app, workflow_app
 from app.event_bus import global_event_bus
 from app.trace_store import trace_manager, load_traces
-from app.memory_store import load_memory, delete_fact, load_missions, add_mission, toggle_mission_task, delete_mission, derive_mission_title
-from app.reminder_store import load_reminders, add_reminder, update_reminder, delete_reminder, get_due_reminders
+from app.memory_store import load_memory, delete_fact, load_missions, add_mission, toggle_mission_task, delete_mission, derive_mission_title, clear_memory_store
+from app.reminder_store import load_reminders, add_reminder, update_reminder, delete_reminder, get_due_reminders, clear_reminders
 from tools.mcp_server import handle_mcp_request
 from google.adk.sessions import InMemorySessionService
 from google.adk.runners import Runner
@@ -234,6 +234,17 @@ async def clear_session_endpoint(request: ResetRequest):
 @app.post("/api/chat/reset")
 async def reset_chat_endpoint(request: ResetRequest):
     return await clear_session_endpoint(request)
+
+@app.post("/api/db/clear")
+async def clear_database_endpoint():
+    logger.info("Initiating full backend database wipe (memories, missions, reminders).")
+    try:
+        clear_memory_store()
+        clear_reminders()
+        return {"status": "success", "message": "Backend databases wiped successfully."}
+    except Exception as e:
+        logger.error(f"Error clearing databases: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 # --- STEP 3: GRAPH EVENT STREAMING ENDPOINT ---
 @app.post("/api/chat/stream")

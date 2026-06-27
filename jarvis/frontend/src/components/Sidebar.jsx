@@ -17,35 +17,35 @@ export default function Sidebar({ currentView, setCurrentView }) {
 
   return (
     <div style={{
-      width: '64px',
+      width: 'var(--space-16)',
       height: '100%',
       backgroundColor: 'rgba(5, 8, 16, 0.95)',
       borderRight: '1px solid var(--border-muted)',
       display: 'flex',
       flexDirection: 'column',
       alignItems: 'center',
-      padding: '20px 0',
+      padding: 'var(--space-5) 0',
       zIndex: 10,
       position: 'relative'
     }}>
       {/* JARVIS Symbol */}
       <div style={{
-        width: '36px',
-        height: '36px',
-        borderRadius: '50%',
+        width: 'var(--space-9)',
+        height: 'var(--space-9)',
+        borderRadius: 'var(--radius-full)',
         border: '2px double var(--accent-cyan)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        marginBottom: '40px',
+        marginBottom: 'var(--space-10)',
         cursor: 'pointer',
         boxShadow: 'var(--glow-cyan)',
         position: 'relative'
       }} onClick={() => setCurrentView('chat')}>
         <div style={{
-          width: '16px',
-          height: '16px',
-          borderRadius: '50%',
+          width: 'var(--space-4)',
+          height: 'var(--space-4)',
+          borderRadius: 'var(--radius-full)',
           backgroundColor: 'var(--accent-cyan)',
           boxShadow: '0 0 8px var(--accent-cyan)',
         }} />
@@ -55,7 +55,7 @@ export default function Sidebar({ currentView, setCurrentView }) {
       <div style={{
         display: 'flex',
         flexDirection: 'column',
-        gap: '16px',
+        gap: 'var(--space-4)',
         flex: 1
       }}>
         {menuItems.map((item) => {
@@ -68,16 +68,16 @@ export default function Sidebar({ currentView, setCurrentView }) {
               onClick={() => setCurrentView(item.id)}
               title={item.label}
               style={{
-                width: '52px',
-                height: '52px',
-                borderRadius: '8px',
+                width: 'var(--space-13)',
+                height: 'var(--space-13)',
+                borderRadius: 'var(--radius-lg)',
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
                 justifyContent: 'center',
-                gap: '4px',
+                gap: 'var(--space-1)',
                 cursor: 'pointer',
-                transition: 'all 0.3s ease',
+                transition: 'color 0.15s ease, background-color 0.15s ease',
                 position: 'relative',
                 color: isActive ? 'var(--accent-cyan)' : 'var(--text-secondary)',
                 backgroundColor: isActive ? 'rgba(0, 212, 255, 0.08)' : 'transparent',
@@ -106,7 +106,7 @@ export default function Sidebar({ currentView, setCurrentView }) {
                 color: isActive ? 'var(--accent-cyan)' : 'var(--text-secondary)',
                 textTransform: 'uppercase'
               }}>
-                {item.id === 'knowledge' ? 'MEMORY' : (item.id === 'missions' ? 'MISSION' : item.id)}
+                {item.label}
               </span>
               
               {isActive && (
@@ -117,7 +117,7 @@ export default function Sidebar({ currentView, setCurrentView }) {
                   height: '50%',
                   width: '3px',
                   backgroundColor: 'var(--accent-cyan)',
-                  borderRadius: '0 2px 2px 0',
+                  borderRadius: '0 var(--radius-sm) var(--radius-sm) 0',
                   boxShadow: '0 0 6px var(--accent-cyan)'
                 }} />
               )}
@@ -131,16 +131,16 @@ export default function Sidebar({ currentView, setCurrentView }) {
         onClick={() => setCurrentView('settings')}
         title="SYSTEM SETTINGS & DIAGNOSTICS"
         style={{
-          width: '52px',
-          height: '52px',
-          borderRadius: '8px',
+          width: 'var(--space-13)',
+          height: 'var(--space-13)',
+          borderRadius: 'var(--radius-lg)',
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
           justifyContent: 'center',
-          gap: '4px',
+          gap: 'var(--space-1)',
           cursor: 'pointer',
-          transition: 'all 0.3s ease',
+          transition: 'color 0.15s ease, background-color 0.15s ease',
           position: 'relative',
           color: currentView === 'settings' ? 'var(--accent-cyan)' : 'var(--text-secondary)',
           backgroundColor: currentView === 'settings' ? 'rgba(0, 212, 255, 0.08)' : 'transparent',
@@ -179,7 +179,7 @@ export default function Sidebar({ currentView, setCurrentView }) {
             height: '50%',
             width: '3px',
             backgroundColor: 'var(--accent-cyan)',
-            borderRadius: '0 2px 2px 0',
+            borderRadius: '0 var(--radius-sm) var(--radius-sm) 0',
             boxShadow: '0 0 6px var(--accent-cyan)'
           }} />
         )}

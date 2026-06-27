@@ -404,3 +404,31 @@ We completed packaging, scripting, documentation updates, and deployment checks 
 ### 2. Scripting & Developer Support
 - **Startup Script Sync**: Updated both [start_jarvis.sh](file:///d:/mithun_files/Personal/5-Day%20AI%20Agents%20Intensive%20Vibe%20Coding%20Course%20With%20Google/Capstone%20Project/jarvis/start_jarvis.sh) and [start_jarvis.bat](file:///d:/mithun_files/Personal/5-Day%20AI%20Agents%20Intensive%20Vibe%20Coding%20Course%20With%20Google/Capstone%20Project/jarvis/start_jarvis.bat) print statements to guide developers to the Settings/SYSTEM view for Developer Mode rather than referencing the decommissioned header button.
 - **Vite Compilation**: Re-ran Vite compiler inside the frontend. Build completed cleanly in 457ms.
+
+---
+
+## 🛠️ Day 9: Refactoring & Polish
+We performed database isolation, UX cleanup, performance optimization, and SettingsView sub-component extraction:
+
+### 1. Data Isolation & Wipe Memory Correction
+- **Database Isolation**: Split `memory.json` into `facts.json` (facts and memories) and `missions.json` (active goals), while keeping `reminders.json` separated. Defined a `MEMORY_FILE` alias for backwards compatibility with the unit/integration tests.
+- **WIPE MEMORIES Connection**: Added `/api/db/clear` endpoint in `server.py` and `wipeDatabase` context action in `JarvisContext.jsx` to perform a real disk-level database wipe. Connected the "WIPE MEMORIES" button in Settings to this new database clear action instead of resetting ADK session states.
+
+### 2. SettingsView React Sub-Component Extraction
+- Extracted [SettingsView.jsx](file:///d:/mithun_files/Personal/5-Day%20AI%20Agents%20Intensive%20Vibe%20Coding%20Course%20With%20Google/Capstone%20Project/jarvis/frontend/src/components/SettingsView.jsx) sections into discrete, readable, and reusable sub-components for improved maintainability:
+  - `IdentityMatrixSection`
+  - `DeveloperModeSection`
+  - `SessionManagementSection`
+  - `IntegrationsSection`
+  - `SystemBuildInfoSection`
+
+### 3. Sidebar Polish, CSS Token Migration & UX Polish
+- **Clean Label Bindings**: Replaced the ternary conditional for labels with `{item.label}` in [Sidebar.jsx](file:///d:/mithun_files/Personal/5-Day%20AI%20Agents%20Intensive%20Vibe%20Coding%20Course%20With%20Google/Capstone%20Project/jarvis/frontend/src/components/Sidebar.jsx).
+- **Hover Transitions**: Specific `transition: 'color 0.15s ease, background-color 0.15s ease'` rules added for smoother responsiveness.
+- **CSS Token Migration**: Swapped inline styling values in [Sidebar.jsx](file:///d:/mithun_files/Personal/5-Day%20AI%20Agents%20Intensive%20Vibe%20Coding%20Course%20With%20Google/Capstone%20Project/jarvis/frontend/src/components/Sidebar.jsx) to leverage spacing and border-radius tokens (`--space-*` and `--radius-*`).
+- **2-Stage Dismissal UX**: Replaced immediate mission dismissal in [MissionsView.jsx](file:///d:/mithun_files/Personal/5-Day%20AI%20Agents%20Intensive%20Vibe%20Coding%20Course%20With%20Google/Capstone%20Project/jarvis/frontend/src/components/MissionsView.jsx) with a confirmation timeout button.
+- **Quick Prompts Badges**: Added category badges in [ChatInterface.jsx](file:///d:/mithun_files/Personal/5-Day%20AI%20Agents%20Intensive%20Vibe%20Coding%20Course%20With%20Google/Capstone%20Project/jarvis/frontend/src/components/ChatInterface.jsx) using the `label` field of the `quickPrompts` array.
+- **Concise Mission Titles**: Optimized `derive_mission_title` in [memory_store.py](file:///d:/mithun_files/Personal/5-Day%20AI%20Agents%20Intensive%20Vibe%20Coding%20Course%20With%20Google/Capstone%20Project/jarvis/app/memory_store.py) to limit derived title lengths to 4 words followed by an ellipsis.
+- **Progress Calibration**: Added `'Idle': 100` and updated the fallback to 100% in [ChatInterface.jsx](file:///d:/mithun_files/Personal/5-Day%20AI%20Agents%20Intensive%20Vibe%20Coding%20Course%20With%20Google/Capstone%20Project/jarvis/frontend/src/components/ChatInterface.jsx) to prevent the bar from dropping to 50% upon response completion.
+- **Competition Writeup Sync**: Polished the lead sentence of [competition_writeup.md](file:///d:/mithun_files/Personal/5-Day%20AI%20Agents%20Intensive%20Vibe%20Coding%20Course%20With%20Google/Capstone%20Project/jarvis/competition_writeup.md) to place ADK 2.0 and MCP front and center.
+

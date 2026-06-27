@@ -5,27 +5,32 @@ import re
 from datetime import datetime
 
 DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data")
-MEMORY_FILE = os.path.join(DATA_DIR, "memory.json")
+FACTS_FILE = os.path.join(DATA_DIR, "facts.json")
+MISSIONS_FILE = os.path.join(DATA_DIR, "missions.json")
+MEMORY_FILE = FACTS_FILE # Alias for backwards compatibility in unit/integration tests
 
 from difflib import SequenceMatcher
 
 def ensure_data_dir():
     os.makedirs(DATA_DIR, exist_ok=True)
-    if not os.path.exists(MEMORY_FILE):
-        with open(MEMORY_FILE, "w", encoding="utf-8") as f:
+    if not os.path.exists(FACTS_FILE):
+        with open(FACTS_FILE, "w", encoding="utf-8") as f:
             json.dump({"facts": []}, f)
+    if not os.path.exists(MISSIONS_FILE):
+        with open(MISSIONS_FILE, "w", encoding="utf-8") as f:
+            json.dump([], f)
 
 def load_memory() -> dict:
     ensure_data_dir()
     try:
-        with open(MEMORY_FILE, "r", encoding="utf-8") as f:
+        with open(FACTS_FILE, "r", encoding="utf-8") as f:
             return json.load(f)
     except Exception:
         return {"facts": []}
 
 def save_memory(data: dict):
     ensure_data_dir()
-    with open(MEMORY_FILE, "w", encoding="utf-8") as f:
+    with open(FACTS_FILE, "w", encoding="utf-8") as f:
         json.dump(data, f, indent=2, ensure_ascii=False)
 
 def add_fact(fact_text: str) -> dict:
@@ -123,16 +128,20 @@ def delete_fact(fact_id: str) -> bool:
 
 
 def load_missions() -> list:
-    """Loads all missions from memory.json."""
-    data = load_memory()
-    return data.get("missions", [])
+    """Loads all missions from missions.json."""
+    ensure_data_dir()
+    try:
+        with open(MISSIONS_FILE, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception:
+        return []
 
 
 def save_missions(missions: list):
-    """Saves missions back to memory.json."""
-    data = load_memory()
-    data["missions"] = missions
-    save_memory(data)
+    """Saves missions back to missions.json."""
+    ensure_data_dir()
+    with open(MISSIONS_FILE, "w", encoding="utf-8") as f:
+        json.dump(missions, f, indent=2, ensure_ascii=False)
 
 
 def derive_mission_title(goal: str) -> str:
@@ -141,14 +150,18 @@ def derive_mission_title(goal: str) -> str:
     if "capstone" in cleaned.lower():
         return "Mission: JARVIS Capstone"
     
-    # Remove common goal prefixes
+    # Remove common goal prefixes and verbs
     cleaned = re.sub(r'^(help me |please |i want to |i need to |let\'s )', '', cleaned, flags=re.IGNORECASE)
-    cleaned = re.sub(r'^(finish |complete |do |work on |build |make )', '', cleaned, flags=re.IGNORECASE)
-    cleaned = re.sub(r'^(my )', '', cleaned, flags=re.IGNORECASE)
+    cleaned = re.sub(r'^(finish |complete |do |work on |build |make |deploy |create |setup |run |test |write |implement |add |fix |update )', '', cleaned, flags=re.IGNORECASE)
+    cleaned = re.sub(r'^(my |the |a |an |some )', '', cleaned, flags=re.IGNORECASE)
     
     words = cleaned.split()
-    capitalized = " ".join(w.capitalize() for w in words)
-    return f"Mission: {capitalized}"
+    if len(words) > 4:
+        capitalized = " ".join(w.capitalize() for w in words[:4])
+        return f"Mission: {capitalized}..."
+    else:
+        capitalized = " ".join(w.capitalize() for w in words)
+        return f"Mission: {capitalized}"
 
 
 def add_mission(title: str, goal: str, tasks: list) -> dict:
@@ -207,4 +220,12 @@ def delete_mission(mission_id: str) -> bool:
         return False
     save_missions(new_missions)
     return True
+
+
+def clear_memory_store():
+    ensure_data_dir()
+    with open(FACTS_FILE, "w", encoding="utf-8") as f:
+        json.dump({"facts": []}, f)
+    with open(MISSIONS_FILE, "w", encoding="utf-8") as f:
+        json.dump([], f)
 
