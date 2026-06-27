@@ -1,6 +1,6 @@
 # JARVIS — Event-Driven AI Operating Companion
 
-JARVIS (Just A Rather Very Intelligent System) is a cyber-styled, context-aware AI operating companion designed to streamline project delivery, memory management, and agenda coordination. Powered by **Google Agent Development Kit (ADK) 2.0** and **Gemini 2.5**, it hides complex multi-agent event choreographies behind a cinematic, responsive frontend.
+JARVIS (Just A Rather Very Intelligent System) is a context-aware AI operating companion designed to streamline project delivery, memory management, and agenda coordination. Powered by **Google Agent Development Kit (ADK) 2.0** and **Gemini 2.5**, it hides complex multi-agent event choreographies behind a cinematic, responsive frontend.
 
 ---
 
