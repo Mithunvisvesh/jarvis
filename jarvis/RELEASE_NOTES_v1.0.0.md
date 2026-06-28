@@ -14,12 +14,9 @@ JARVIS bridges the gap between static conversational LLMs and dynamic operating 
 
 ### Asynchronous Agent-to-Agent (A2A) Mesh
 JARVIS implements a strongly-typed in-memory Event Bus where independent agents collaborate asynchronously:
-- **OrchestratorAgent**: Analyzes the query and routes it to specialized agent sub-modules.
-- **TelemetryAgent**: Extracts CPU, RAM, Disk, and GPU stats via the MCP server.
-- **MemoryAgent**: Extracts and stores declarative facts, and recalls relevant facts using a normalized SequenceMatcher relevance algorithm.
-- **ReminderAgent**: Schedules offline daily, weekly, or specific date timers.
-- **ResponseSynthesizerAgent**: Collates metrics, recalled facts, and status events to build the final response payload.
-- **BackgroundAgent & UIAgent**: Drive background cron validations and alert overlays.
+- **OrchestratorNode**: Classifies incoming query intent and routes to the appropriate agent channel.
+- **BackgroundDataAgent**: Coordinates background tools (system diagnostics, persistent memory facts, reminders) via standard Model Context Protocol (MCP) JSON-RPC 2.0 subprocess.
+- **UIFrontendAgent**: Synthesizes and streams the final response token packets back to the client using Server-Sent Events (SSE).
 
 ### Model Context Protocol (MCP) Integration
 All system resources are isolated behind a standard Model Context Protocol router (`tools/mcp_server.py`). The agents never call database or operating system functions directly; instead, they query the MCP router over standard JSON-RPC 2.0 messages, ensuring total API sandboxing and security compliance.

@@ -7,7 +7,7 @@ services:
       - "8001:8001"
     environment:
       - GOOGLE_GENAI_USE_VERTEXAI=True
-      - GOOGLE_CLOUD_PROJECT=dependable-data-500016-s5
+      - GOOGLE_CLOUD_PROJECT=your-gcp-project-id
       - USE_WORKFLOW=true
     volumes:
       - ./data:/workspace/data

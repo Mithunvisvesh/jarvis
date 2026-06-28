@@ -121,6 +121,7 @@ export default function ChatInterface() {
     resetConversation
   } = useJarvis();
   const [input, setInput] = useState('');
+  const [voiceError, setVoiceError] = useState(null);
   const messagesEndRef = useRef(null);
   
   const [resetStage, setResetStage] = useState(0); // 0 = idle, 1 = confirm
@@ -202,7 +203,8 @@ export default function ChatInterface() {
 
   const toggleListening = () => {
     if (!recognitionRef.current) {
-      alert("Speech recognition is not supported in this browser. Please use Chrome, Edge, or Safari.");
+      setVoiceError("Voice requires Chrome, Edge, or Safari");
+      setTimeout(() => setVoiceError(null), 4000);
       return;
     }
 
@@ -233,15 +235,7 @@ export default function ChatInterface() {
     scrollToBottom();
   }, [messages, isThinking, executionState]);
 
-  // Hook to monitor and respond to incoming ADK 2.0 execution state transitions
-  useEffect(() => {
-    if (isThinking) {
-      console.log(`[ADK 2.0 Event] Transitioning to execution state: ${executionState}`);
-      if (executionState === 'Analyzing Request' || executionState === 'Routing Intent') {
-        console.log('%c[ADK 2.0] Thinking/Routing state detected. Triggering ACCENT_CYAN glow.', 'color: #00D4FF; font-weight: bold;');
-      }
-    }
-  }, [executionState, isThinking]);
+
 
   const handleSend = (e) => {
     e.preventDefault();
@@ -667,6 +661,23 @@ export default function ChatInterface() {
                 {p.text}
               </button>
             ))}
+          </div>
+        )}
+
+        {voiceError && (
+          <div style={{
+            color: 'var(--accent-pink)',
+            fontSize: '11px',
+            fontFamily: 'var(--font-mono)',
+            margin: '0 0 8px 4px',
+            textTransform: 'uppercase',
+            letterSpacing: '0.5px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px'
+          }}>
+            <span style={{ display: 'inline-block', width: '6px', height: '6px', backgroundColor: 'var(--accent-pink)', borderRadius: '50%' }}></span>
+            {voiceError}
           </div>
         )}
 

@@ -1,5 +1,7 @@
 # JARVIS — Event-Driven AI Operating Companion
 
+[![Demonstration Video](https://img.shields.io/badge/Demo_Video-Play_Now-00D4FF?style=for-the-badge&logo=youtube)](https://github.com/Mithunvisvesh/jarvis)
+
 JARVIS (Just A Rather Very Intelligent System) is a context-aware AI operating companion designed to streamline project delivery, memory management, and agenda coordination. Powered by **Google Agent Development Kit (ADK) 2.0** and **Gemini 2.5**, it hides complex multi-agent event choreographies behind a cinematic, responsive frontend.
 
 ---
@@ -24,7 +26,7 @@ graph TD
     E["UIFrontendNode (UIFrontendAgent)"]:::FastAPI
     F["Event Bus (global_event_bus)"]:::FastAPI
     G["MCP Server Subprocess (mcp_server.py)"]:::Subprocess
-    H["Data Storage (memory.json / reminders.json)"]:::Storage
+    H["Data Storage (facts.json / missions.json / reminders.json)"]:::Storage
 
     %% Connections
     A -->|POST /api/chat/stream| B
@@ -76,7 +78,8 @@ Follow these steps to launch JARVIS locally:
    ```
 2. Create and activate a Python virtual environment:
    ```bash
-   python -m venv .venv
+   # Install uv if not already installed (pip install uv)
+   uv venv
    # Windows:
    .venv\Scripts\activate
    # macOS/Linux:
@@ -84,7 +87,7 @@ Follow these steps to launch JARVIS locally:
    ```
 3. Install dependencies:
    ```bash
-   pip install -r pyproject.toml
+   uv sync
    ```
 4. Copy the environment template and set your Gemini API key:
    ```bash

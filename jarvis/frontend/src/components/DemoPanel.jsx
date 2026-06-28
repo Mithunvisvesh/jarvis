@@ -12,28 +12,28 @@ export default function DemoPanel() {
       icon: Cpu,
       color: 'var(--accent-cyan)',
       prompt: 'check system diagnostics',
-      desc: 'Triggers TelemetryAgent, queries MCP CPU/RAM metrics.'
+      desc: 'Triggers BackgroundDataAgent via MCP subprocess, reads CPU/RAM/Disk metrics.'
     },
     {
       label: 'Store Memory',
       icon: Brain,
       color: 'var(--accent-green)',
       prompt: 'Remember that my capstone deadline is July 6',
-      desc: 'Triggers MemoryAgent, stores fact in memory.json database.'
+      desc: 'Routes to BackgroundDataAgent, stores fact in facts.json with 85% similarity deduplication.'
     },
     {
       label: 'Recall Memory',
       icon: HelpCircle,
       color: 'var(--accent-green)',
       prompt: 'When is my capstone deadline?',
-      desc: 'Triggers MemoryAgent, performs SequenceMatcher semantic lookup.'
+      desc: 'Recalls stored facts using SequenceMatcher fuzzy search.'
     },
     {
       label: 'Create Reminder',
       icon: Clock,
       color: 'var(--accent-orange)',
       prompt: 'Remind me tomorrow at 5 PM to do coding',
-      desc: 'Triggers ReminderAgent, parses title and schedules timer.'
+      desc: 'Routes to BackgroundDataAgent, parses and schedules reminder with date/time inference.'
     },
     {
       label: 'Prompt Injection Defense',
