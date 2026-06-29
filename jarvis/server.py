@@ -10,6 +10,10 @@ from fastapi import FastAPI, Query, HTTPException, Response
 from fastapi.responses import HTMLResponse, StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from google.genai import types
+from dotenv import load_dotenv
+
+# Load local environment variables
+load_dotenv()
 
 # Import both the legacy production app and the new Phase 2 workflow app
 from app.agent import app as adk_app, workflow_app
