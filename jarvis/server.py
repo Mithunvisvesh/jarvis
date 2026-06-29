@@ -613,3 +613,76 @@ async def export_diagnostics_endpoint(format: str = Query("json")):
         return HTMLResponse(content=html_content)
     else:
         raise HTTPException(status_code=400, detail="Unsupported format. Choose 'json' or 'pdf'/'html'.")
+
+
+@app.get("/api/system/welcome")
+async def get_dynamic_welcome_endpoint():
+    logger.info("Generating dynamic context-aware welcome message.")
+    try:
+        from app.memory_store import load_memory, load_missions
+        from app.reminder_store import load_reminders
+        
+        # Load user context
+        memories = load_memory().get("facts", [])
+        missions = load_missions()
+        reminders = load_reminders()
+        
+        # If no context is available, return the simple natural greeting immediately to save time
+        if not memories and not missions and not reminders:
+            return {"status": "success", "greeting": "Hi, Mithun.\nWhat can I do for you today?"}
+            
+        # Build prompt context
+        context_lines = []
+        if memories:
+            context_lines.append("Stored Facts about the user:")
+            for m in memories[:15]:
+                context_lines.append(f"- {m['fact']}")
+                
+        if missions:
+            context_lines.append("\nActive Missions and Goals:")
+            for m in missions:
+                tasks_str = ", ".join([f"'{t['text']}' (completed: {t['completed']})" for t in m.get("tasks", [])])
+                context_lines.append(f"- Mission: {m['title']} (Goal: {m.get('goal', '')}) Tasks: {tasks_str}")
+                
+        if reminders:
+            context_lines.append("\nUpcoming Agenda/Reminders:")
+            for r in reminders:
+                context_lines.append(f"- {r.get('title')} at {r.get('time')}")
+                
+        user_context = "\n".join(context_lines)
+        
+        system_prompt = (
+            "You are J.A.R.V.I.S., Tony Stark's (and now Mithun's) highly intelligent AI assistant. "
+            "Greet the user by name (Mithun). Analyze their current tasks, active missions, and reminders to generate "
+            "a natural, highly personalized, proactive greeting. "
+            "Highlight their active goals or suggest the next task to work on contextually. "
+            "Communicate naturally like J.A.R.V.I.S. in the Iron Man films: sophisticated, polite, and helpful. "
+            "Keep the response brief (max 2-3 sentences). "
+            "If no context or active goals are available, greet him simply and naturally: "
+            "'Hi, Mithun. What can I do for you today?'"
+        )
+        
+        from google.genai import Client
+        client = Client()
+        
+        contents = f"User Context:\n{user_context}\n\nGenerate the JARVIS greeting."
+        
+        response = client.models.generate_content(
+            model="gemini-2.5-flash",
+            contents=contents,
+            config=types.GenerateContentConfig(
+                system_instruction=system_prompt,
+                temperature=0.7,
+                max_output_tokens=150
+            )
+        )
+        
+        greeting = response.text.strip()
+        if not greeting:
+            greeting = "Hi, Mithun.\nWhat can I do for you today?"
+            
+        return {"status": "success", "greeting": greeting}
+        
+    except Exception as e:
+        logger.error(f"Failed to generate dynamic greeting: {e}")
+        return {"status": "fallback", "greeting": "Hi, Mithun.\nWhat can I do for you today?"}

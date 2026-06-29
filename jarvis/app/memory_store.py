@@ -146,7 +146,16 @@ def load_missions() -> list:
     ensure_data_dir()
     try:
         with open(MISSIONS_FILE, "r", encoding="utf-8") as f:
-            missions = json.load(f)
+            data = json.load(f)
+        
+        # Determine if it's a dict or a list
+        if isinstance(data, dict):
+            missions = data.get("missions", [])
+        elif isinstance(data, list):
+            missions = data
+        else:
+            missions = []
+
         modified = False
         for m in missions:
             if "id" not in m:
@@ -169,10 +178,14 @@ def load_missions() -> list:
                     if "title" not in t and "text" in t:
                         t["title"] = t["text"]
                         modified = True
-        if modified:
+        
+        # Save standard list format if it was a dict or was modified
+        if isinstance(data, dict) or modified:
             save_missions(missions)
         return missions
-    except Exception:
+    except Exception as e:
+        import logging
+        logging.error(f"Error loading missions: {e}")
         return []
 
 

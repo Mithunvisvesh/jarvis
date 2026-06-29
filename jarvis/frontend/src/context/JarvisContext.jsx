@@ -95,6 +95,7 @@ export function JarvisProvider({ children }) {
   const [gpuLoad, setGpuLoad] = useState(10);
   const [isConnected, setIsConnected] = useState(true);
   const [welcomeBackText, setWelcomeBackText] = useState('');
+  const [dynamicGreeting, setDynamicGreeting] = useState('');
   
   const [telemetry, setTelemetry] = useState({
     cpuLoad: 28,
@@ -190,6 +191,22 @@ export function JarvisProvider({ children }) {
     }
   };
 
+  const fetchDynamicWelcome = async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/system/welcome`);
+      if (response.ok) {
+        const data = await response.json();
+        if (data && data.greeting) {
+          setDynamicGreeting(data.greeting);
+          return data.greeting;
+        }
+      }
+    } catch (err) {
+      console.error("Failed to fetch dynamic welcome:", err);
+    }
+    return null;
+  };
+
   // Toggle a task in a mission
   const toggleMissionTask = async (missionId, taskId) => {
     // Optimistically toggle task in local state for instant UI responsiveness
@@ -255,6 +272,7 @@ export function JarvisProvider({ children }) {
     fetchReminders();
     fetchMemories();
     fetchMissions();
+    fetchDynamicWelcome();
   }, []);
 
   // Centralized hook to dynamically update the first welcome message when state updates
@@ -271,7 +289,7 @@ export function JarvisProvider({ children }) {
       }
     });
 
-    const welcomeText = getWelcomeMessage(reminders.length, activeMissionsCount, inProgressTasksCount, welcomeBackText);
+    const welcomeText = dynamicGreeting || getWelcomeMessage(reminders.length, activeMissionsCount, inProgressTasksCount, welcomeBackText);
     
     setMessages(prev => {
       if (prev.length > 0) {
@@ -282,7 +300,9 @@ export function JarvisProvider({ children }) {
                  msg.text.startsWith('Mithun, you have only') || 
                  msg.text.startsWith('Mithun, your capstone') ||
                  msg.text.includes("days left before your capstone deadline") ||
-                 msg.text.includes("capstone deadline is");
+                 msg.text.includes("capstone deadline is") ||
+                 msg.text.includes("What can I do for you today?") ||
+                 (dynamicGreeting && msg.text === dynamicGreeting);
         };
         
         if (isWelcomeMessage(prev[0])) {
@@ -293,7 +313,7 @@ export function JarvisProvider({ children }) {
       }
       return prev;
     });
-  }, [reminders, missions, welcomeBackText]);
+  }, [reminders, missions, welcomeBackText, dynamicGreeting]);
 
   // Periodic Telemetry Simulator to make meters "dance" in the UI
   useEffect(() => {
@@ -872,11 +892,13 @@ export function JarvisProvider({ children }) {
     }
     
     // Also clear other local states!
+    setDynamicGreeting('');
     setMissions([]);
     setReminders([]);
     setMemories([]);
     // Wipe all databases on backend!
     await wipeDatabaseApi();
+    await fetchDynamicWelcome();
     return true;
   };
 
