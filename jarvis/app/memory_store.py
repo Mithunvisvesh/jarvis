@@ -24,7 +24,21 @@ def load_memory() -> dict:
     ensure_data_dir()
     try:
         with open(FACTS_FILE, "r", encoding="utf-8") as f:
-            return json.load(f)
+            data = json.load(f)
+        modified = False
+        if "facts" not in data:
+            data["facts"] = []
+            modified = True
+        for f in data.get("facts", []):
+            if "id" not in f:
+                f["id"] = str(uuid.uuid4())
+                modified = True
+            if "created_at" not in f:
+                f["created_at"] = datetime.now().isoformat()
+                modified = True
+        if modified:
+            save_memory(data)
+        return data
     except Exception:
         return {"facts": []}
 
@@ -132,7 +146,32 @@ def load_missions() -> list:
     ensure_data_dir()
     try:
         with open(MISSIONS_FILE, "r", encoding="utf-8") as f:
-            return json.load(f)
+            missions = json.load(f)
+        modified = False
+        for m in missions:
+            if "id" not in m:
+                m["id"] = str(uuid.uuid4())
+                modified = True
+            if "created_at" not in m:
+                m["created_at"] = datetime.now().isoformat()
+                modified = True
+            if "goal" not in m:
+                m["goal"] = m.get("title", "")
+                modified = True
+            if "tasks" in m:
+                for t in m["tasks"]:
+                    if "id" not in t:
+                        t["id"] = str(uuid.uuid4())
+                        modified = True
+                    if "text" not in t and "title" in t:
+                        t["text"] = t["title"]
+                        modified = True
+                    if "title" not in t and "text" in t:
+                        t["title"] = t["text"]
+                        modified = True
+        if modified:
+            save_missions(missions)
+        return missions
     except Exception:
         return []
 
