@@ -197,8 +197,12 @@ export function JarvisProvider({ children }) {
       if (response.ok) {
         const data = await response.json();
         if (data && data.greeting) {
-          setDynamicGreeting(data.greeting);
-          return data.greeting;
+          let fullText = data.greeting;
+          if (data.suggestion) {
+            fullText += "\n\n" + data.suggestion;
+          }
+          setDynamicGreeting(fullText);
+          return fullText;
         }
       }
     } catch (err) {
