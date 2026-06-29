@@ -17,8 +17,14 @@ from google.adk.runners import Runner
 from google.adk.sessions import InMemorySessionService
 from google.genai import types
 
-from app.agent import root_agent
+from google.adk.agents import Agent
+from google.adk.models import Gemini
 
+mock_agent = Agent(
+    name="root_agent",
+    model=Gemini(model="gemini-flash-latest"),
+    instruction="Test"
+)
 
 from unittest.mock import patch
 from google.adk.events.event import Event
@@ -35,7 +41,7 @@ def test_agent_stream(mock_run) -> None:
     session_service = InMemorySessionService()
 
     session = session_service.create_session_sync(user_id="test_user", app_name="test")
-    runner = Runner(agent=root_agent, session_service=session_service, app_name="test")
+    runner = Runner(agent=mock_agent, session_service=session_service, app_name="test")
 
     message = types.Content(
         role="user", parts=[types.Part.from_text(text="Why is the sky blue?")]

@@ -238,7 +238,8 @@ def add_mission(title: str, goal: str, tasks: list) -> dict:
         "title": title.strip(),
         "goal": goal.strip(),
         "tasks": structured_tasks,
-        "created_at": datetime.now().isoformat()
+        "created_at": datetime.now().isoformat(),
+        "status": "active"
     }
     missions.append(new_mission)
     save_missions(missions)

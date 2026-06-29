@@ -31,46 +31,18 @@ from app.memory_store import add_fact, recall_facts
 from app.reminder_parser import parse_reminder
 from app.reminder_store import add_reminder
 
-_, project_id = google.auth.default()
-os.environ["GOOGLE_CLOUD_PROJECT"] = project_id
-os.environ["GOOGLE_CLOUD_LOCATION"] = "global"
-os.environ["GOOGLE_GENAI_USE_VERTEXAI"] = "True"
-
-
-# --- PRODUCTION PATH (EXISTING CODESPACE PATH) ---
-def get_weather(query: str) -> str:
-    """Simulates a web search. Use it get information on weather."""
-    if "sf" in query.lower() or "san francisco" in query.lower():
-        return "It's 60 degrees and foggy."
-    return "It's 90 degrees and sunny."
-
-
-def get_current_time(query: str) -> str:
-    """Simulates getting the current time for a city."""
-    if "sf" in query.lower() or "san francisco" in query.lower():
-        tz_identifier = "America/Los_Angeles"
-    else:
-        return f"Sorry, I don't have timezone information for query: {query}."
-
-    tz = ZoneInfo(tz_identifier)
-    now = datetime.datetime.now(tz)
-    return f"The current time for query {query} is {now.strftime('%Y-%m-%d %H:%M:%S %Z%z')}"
-
-
-root_agent = Agent(
-    name="root_agent",
-    model=Gemini(
-        model="gemini-flash-latest",
-        retry_options=types.HttpRetryOptions(attempts=3),
-    ),
-    instruction="You are a helpful AI assistant designed to provide accurate and useful information.",
-    tools=[get_weather, get_current_time],
-)
-
-app = App(
-    root_agent=root_agent,
-    name="app",
-)
+try:
+    _, project_id = google.auth.default()
+    if not project_id:
+        project_id = "default-project"
+    os.environ["GOOGLE_CLOUD_PROJECT"] = project_id
+    os.environ["GOOGLE_CLOUD_LOCATION"] = "global"
+    os.environ["GOOGLE_GENAI_USE_VERTEXAI"] = "True"
+except Exception:
+    # API key fallback mode (e.g. GEMINI_API_KEY)
+    os.environ["GOOGLE_GENAI_USE_VERTEXAI"] = "False"
+    if "GOOGLE_CLOUD_PROJECT" not in os.environ:
+        os.environ["GOOGLE_CLOUD_PROJECT"] = "default-project"
 
 
 # --- PARALLEL WORKFLOW PATH (PHASE 6 A2A GRAPH) ---
@@ -286,3 +258,6 @@ workflow_app = App(
     root_agent=jarvis_core_workflow,
     name="workflow_app"
 )
+
+# Map app to workflow_app to preserve import compatibility in server.py
+app = workflow_app

@@ -1,6 +1,5 @@
 # JARVIS — Event-Driven AI Operating Companion
 
-[![Demonstration Video](https://img.shields.io/badge/Demo_Video-Play_Now-00D4FF?style=for-the-badge&logo=youtube)](https://github.com/Mithunvisvesh/jarvis)
 
 JARVIS (Just A Rather Very Intelligent System) is a context-aware AI operating companion designed to streamline project delivery, memory management, and agenda coordination. Powered by **Google Agent Development Kit (ADK) 2.0** and **Gemini 2.5**, it hides complex multi-agent event choreographies behind a cinematic, responsive frontend.
 
@@ -99,12 +98,14 @@ Follow these steps to launch JARVIS locally:
 #### Windows (Single Command)
 Run the bat script to launch the backend server and start the frontend client:
 ```cmd
+cd jarvis
 start_jarvis.bat
 ```
 
 #### macOS/Linux (Single Command)
 Execute the startup shell script:
 ```bash
+cd jarvis
 chmod +x start_jarvis.sh
 ./start_jarvis.sh
 ```

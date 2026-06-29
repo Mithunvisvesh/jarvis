@@ -21,17 +21,17 @@ graph TD
     C["Event Bus (app/event_bus.py)"]:::FastAPI
     D["MCP Server (tools/mcp_server.py)"]:::FastAPI
     E["Reminders Database (reminders.json)"]:::Storage
-    F["Memory Database (memory.json)"]:::Storage
+    F["Memory & Missions Databases (facts.json / missions.json)"]:::Storage
     G["Traces Database (traces.json)"]:::Storage
 
     %% Connections
     A -->|POST /api/chat/stream| B
     A -->|GET /api/traces| B
     B -->|Publish Event| C
-    B -->|Write Reminders & Memories| E & F
+    B -->|Write Reminders, Facts & Missions| E & F
     B -->|Write Traces| G
     B -->|JSON-RPC via Stdio| D
-    D -->|Read Reminders & Memories| E & F
+    D -->|Read Reminders, Facts & Missions| E & F
 ```
 
 ---
