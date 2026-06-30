@@ -263,9 +263,13 @@ async def clear_database_endpoint():
 
 @app.post("/api/demo/load")
 async def load_demo_data_endpoint():
-    from app.demo_data import load_demo_data
-    result = load_demo_data()
-    return result
+    try:
+        from app.demo_data import load_demo_data
+        result = load_demo_data()
+        return result
+    except Exception as e:
+        logger.error(f"Demo load failed: {e}")
+        raise HTTPException(status_code=500, detail="Failed to load demo dataset.")
 
 # --- STEP 3: GRAPH EVENT STREAMING ENDPOINT ---
 @app.post("/api/chat/stream")

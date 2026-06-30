@@ -14,7 +14,8 @@ import {
   ToggleRight,
   GitBranch,
   Calendar,
-  Layers
+  Layers,
+  Volume2
 } from 'lucide-react';
 
 function IdentityMatrixSection() {
@@ -71,7 +72,7 @@ function IdentityMatrixSection() {
   );
 }
 
-function DeveloperModeSection({ isDeveloperMode, setIsDeveloperMode }) {
+function DeveloperModeSection({ isDeveloperMode, setIsDeveloperMode, ttsEnabled, setTtsEnabledPersisted }) {
   return (
     <div className="cyber-panel" style={{
       backgroundColor: 'rgba(10, 14, 24, 0.3)',
@@ -123,6 +124,52 @@ function DeveloperModeSection({ isDeveloperMode, setIsDeveloperMode }) {
           }}
         >
           {isDeveloperMode ? <ToggleRight size={36} /> : <ToggleLeft size={36} />}
+        </button>
+      </div>
+
+      <div style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        borderTop: '1px solid rgba(255, 255, 255, 0.05)',
+        paddingTop: '14px'
+      }}>
+        <div>
+          <h2 style={{
+            fontFamily: 'var(--font-header)',
+            fontSize: '13px',
+            fontWeight: 'bold',
+            letterSpacing: '1px',
+            color: 'var(--accent-cyan)',
+            margin: 0,
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px'
+          }}>
+            <Volume2 size={14} />
+            Voice Output (TTS)
+          </h2>
+          <p style={{
+            margin: '4px 0 0 0',
+            fontSize: '10px',
+            color: 'var(--text-secondary)'
+          }}>
+            JARVIS speaks short responses aloud. Chrome recommended.
+          </p>
+        </div>
+        <button 
+          onClick={() => setTtsEnabledPersisted(!ttsEnabled)}
+          style={{
+            background: 'none',
+            border: 'none',
+            cursor: 'pointer',
+            color: ttsEnabled ? 'var(--accent-cyan)' : 'var(--text-secondary)',
+            transition: 'color 0.2s',
+            display: 'flex',
+            alignItems: 'center'
+          }}
+        >
+          {ttsEnabled ? <ToggleRight size={36} /> : <ToggleLeft size={36} />}
         </button>
       </div>
 
@@ -540,7 +587,9 @@ export default function SettingsView() {
     clearChat, 
     wipeMemories, 
     loadDemoData,
-    resetConversation
+    resetConversation,
+    ttsEnabled,
+    setTtsEnabledPersisted
   } = useJarvis();
 
   // Reset stage
@@ -663,6 +712,8 @@ export default function SettingsView() {
         <DeveloperModeSection 
           isDeveloperMode={isDeveloperMode} 
           setIsDeveloperMode={setIsDeveloperMode} 
+          ttsEnabled={ttsEnabled}
+          setTtsEnabledPersisted={setTtsEnabledPersisted}
         />
 
         <SessionManagementSection 
