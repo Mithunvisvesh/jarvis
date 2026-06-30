@@ -168,8 +168,20 @@ function SessionManagementSection({
   wipeStage,
   handleWipeClick,
   resetStage,
-  handleResetClick
+  handleResetClick,
+  loadDemoData
 }) {
+  const [demoLoadedMsg, setDemoLoadedMsg] = useState('');
+
+  const handleLoadDemo = async () => {
+    const success = await loadDemoData();
+    if (success) {
+      setDemoLoadedMsg('Demo dataset loaded.');
+      setTimeout(() => {
+        setDemoLoadedMsg('');
+      }, 3000);
+    }
+  };
   return (
     <div className="cyber-panel" style={{
       backgroundColor: 'rgba(10, 14, 24, 0.3)',
@@ -280,6 +292,61 @@ function SessionManagementSection({
             <RefreshCw size={12} />
             {wipeStage === 1 ? 'CONFIRM WIPE?' : 'WIPE MEMORIES'}
           </button>
+        </div>
+
+        {/* Action: Load Demo Data */}
+        <div style={{
+          border: '1px solid rgba(255, 255, 255, 0.1)',
+          borderRadius: '4px',
+          padding: '12px',
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'space-between',
+          gap: '12px',
+          backgroundColor: 'rgba(10, 14, 24, 0.2)'
+        }}>
+          <div>
+            <span style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'var(--text-primary)', fontWeight: 'bold' }}>LOAD DEMO DATASET</span>
+            <p style={{ margin: '4px 0 0 0', fontSize: '9px', color: 'var(--text-secondary)' }}>Loads the demo context: 6 facts, 1 submit mission, and 3 submission reminders.</p>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+            <button
+              onClick={handleLoadDemo}
+              style={{
+                width: '100%',
+                padding: '8px',
+                backgroundColor: 'rgba(0, 212, 255, 0.08)',
+                border: '1px solid rgba(0, 212, 255, 0.3)',
+                color: 'var(--accent-cyan)',
+                fontSize: '10px',
+                fontFamily: 'var(--font-mono)',
+                fontWeight: 'bold',
+                cursor: 'pointer',
+                borderRadius: '4px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '6px',
+                boxShadow: '0 0 10px rgba(0, 212, 255, 0.1)',
+                transition: 'all 0.2s'
+              }}
+            >
+              <Database size={12} />
+              LOAD DEMO DATA
+            </button>
+            {demoLoadedMsg && (
+              <div style={{
+                fontSize: '9px',
+                color: 'var(--accent-cyan)',
+                fontFamily: 'var(--font-mono)',
+                textAlign: 'center',
+                marginTop: '4px',
+                animation: 'fadeIn 0.3s ease'
+              }}>
+                {demoLoadedMsg}
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Action 3: Complete Reset */}
@@ -472,6 +539,7 @@ export default function SettingsView() {
     setIsDeveloperMode, 
     clearChat, 
     wipeMemories, 
+    loadDemoData,
     resetConversation
   } = useJarvis();
 
@@ -604,6 +672,7 @@ export default function SettingsView() {
           handleWipeClick={handleWipeClick}
           resetStage={resetStage}
           handleResetClick={handleResetClick}
+          loadDemoData={loadDemoData}
         />
 
         <IntegrationsSection />

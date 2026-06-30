@@ -243,6 +243,19 @@ export async function wipeDatabaseApi() {
   }
 }
 
+export async function loadDemoDataApi() {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/demo/load`, {
+      method: "POST",
+    });
+    if (!response.ok) throw new Error("Failed to load demo data");
+    return await response.json();
+  } catch (error) {
+    console.error("loadDemoDataApi failed:", error);
+    return null;
+  }
+}
+
 export async function wipeMemoriesApi() {
   try {
     const response = await fetch(`${API_BASE_URL}/api/db/memory`, {

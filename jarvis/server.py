@@ -260,6 +260,13 @@ async def clear_database_endpoint():
         logger.error(f"Error clearing databases: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+
+@app.post("/api/demo/load")
+async def load_demo_data_endpoint():
+    from app.demo_data import load_demo_data
+    result = load_demo_data()
+    return result
+
 # --- STEP 3: GRAPH EVENT STREAMING ENDPOINT ---
 @app.post("/api/chat/stream")
 async def chat_stream_endpoint(request: JarvisRequest):

@@ -14,6 +14,7 @@ import {
   deleteMission as deleteMissionApi,
   wipeDatabaseApi,
   wipeMemoriesApi,
+  loadDemoDataApi,
   API_BASE_URL
 } from '../services/api';
 
@@ -846,6 +847,22 @@ export function JarvisProvider({ children }) {
     return false;
   };
 
+  const loadDemoData = async () => {
+    try {
+      const res = await loadDemoDataApi();
+      if (res && res.status === "success") {
+        await fetchMemories();
+        await fetchMissions();
+        await fetchReminders();
+        addTimelineEvent("system", "Demo dataset loaded: 6 facts, 1 mission, 3 reminders.");
+        return true;
+      }
+    } catch (err) {
+      console.error("Failed to load demo data:", err);
+    }
+    return false;
+  };
+
   const resetConversation = async (userId = 'user_01', sessionId = 'default_session') => {
     // 1. Clear local storage and state
     window.localStorage.removeItem('jarvis_chat_session');
@@ -932,6 +949,7 @@ export function JarvisProvider({ children }) {
       wipeSessionContext,
       wipeDatabase,
       wipeMemories,
+      loadDemoData,
       resetConversation,
       missions,
       fetchMissions,
