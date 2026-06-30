@@ -431,4 +431,22 @@ We performed database isolation, UX cleanup, performance optimization, and Setti
 - **Concise Mission Titles**: Optimized `derive_mission_title` in [memory_store.py](file:///d:/mithun_files/Personal/5-Day%20AI%20Agents%20Intensive%20Vibe%20Coding%20Course%20With%20Google/Capstone%20Project/jarvis/app/memory_store.py) to limit derived title lengths to 4 words followed by an ellipsis.
 - **Progress Calibration**: Added `'Idle': 100` and updated the fallback to 100% in [ChatInterface.jsx](file:///d:/mithun_files/Personal/5-Day%20AI%20Agents%20Intensive%20Vibe%20Coding%20Course%20With%20Google/Capstone%20Project/jarvis/frontend/src/components/ChatInterface.jsx) to prevent the bar from dropping to 50% upon response completion.
 - **Competition Writeup Sync**: Polished the lead sentence of [competition_writeup.md](file:///d:/mithun_files/Personal/5-Day%20AI%20Agents%20Intensive%20Vibe%20Coding%20Course%20With%20Google/Capstone%20Project/jarvis/competition_writeup.md) to place ADK 2.0 and MCP front and center.
+## 🛠️ Day 10: Demo Mode, TTS Speech Synthesis, and Live Integrations
 
+We completed the Day 10 deliverables, resolving bug cases, introducing browser-native speech synthesis, and converting passive placeholder stubs into interactive modules:
+
+### 1. Task 10.1 — Demo Mode System
+- **Backend Data Constructor**: Created [demo_data.py](file:///d:/mithun_files/Personal/5-Day%20AI%20Agents%20Intensive%20Vibe%20Coding%20Course%20With%20Google/Capstone%20Project/jarvis/app/demo_data.py) to write a complete mock context (6 facts, 1 mission with 8 sub-tasks, and 3 reminders) to the localized JSON databases.
+- **FastAPI Route**: Added `/api/demo/load` endpoint with robust exception logging in [server.py](file:///d:/mithun_files/Personal/5-Day%20AI%20Agents%20Intensive%20Vibe%20Coding%20Course%20With%20Google/Capstone%20Project/jarvis/server.py).
+- **React Action Hook**: Integrated the `loadDemoData` context handler in [JarvisContext.jsx](file:///d:/mithun_files/Personal/5-Day%20AI%20Agents%20Intensive%20Vibe%20Coding%20Course%20With%20Google/Capstone%20Project/jarvis/frontend/src/context/JarvisContext.jsx) to sync the state, fetch all new records, and post the update message to the system timeline event bus.
+- **Settings Button**: Added a "LOAD DEMO DATA" button inside `SessionManagementSection` of [SettingsView.jsx](file:///d:/mithun_files/Personal/5-Day%20AI%20Agents%20Intensive%20Vibe%20Coding%20Course%20With%20Google/Capstone%20Project/jarvis/frontend/src/components/SettingsView.jsx) with a 3-second auto-fading inline confirmation message.
+
+### 2. Task 10.2 — Native TTS Speech Synthesis
+- **State Persistence**: Created a `ttsEnabled` state backed by `localStorage` ("`jarvis_tts_enabled`") and toggle switch inside the System Settings panel.
+- **Consistent Voice Cache**: Integrated a voice-cache listener (`onvoiceschanged`) in [JarvisContext.jsx](file:///d:/mithun_files/Personal/5-Day%20AI%20Agents%20Intensive%20Vibe%20Coding%20Course%20With%20Google/Capstone%20Project/jarvis/frontend/src/context/JarvisContext.jsx) to detect when browser system voices load asynchronously and preserve the chosen voice (Google/Samantha/Daniel) from the very first utterance.
+- **Chat Trigger**: Configured a `prevThinkingRef` in [ChatInterface.jsx](file:///d:/mithun_files/Personal/5-Day%20AI%20Agents%20Intensive%20Vibe%20Coding%20Course%20With%20Google/Capstone%20Project/jarvis/frontend/src/components/ChatInterface.jsx) to trigger TTS whenever `isThinking` transitions from `true` to `false` (finalizing response token stream).
+
+### 3. Task 10.3 — Interactive Integrations Matrix
+- **State Toggles**: Connected the three placeholder tiles (GitHub, Notion, Google Calendar) inside [SettingsView.jsx](file:///d:/mithun_files/Personal/5-Day%20AI%20Agents%20Intensive%20Vibe%20Coding%20Course%20With%20Google/Capstone%20Project/jarvis/frontend/src/components/SettingsView.jsx) to interactive React states and `localStorage` keys.
+- **Aesthetic Accent Borders**: Connecting an integration changes its visual state from muted `opacity: 0.5` with a dashed border to full `opacity: 1` with a solid, glowing border matching its thematic brand color (`--accent-cyan` for GitHub, `--accent-pink` for Notion, `--accent-green` for Google Calendar).
+- **A2A Event Bus Publishing**: Activating/deactivating an integration posts a lifecycle notification message to the event bus, updating the system status log feed in real-time.
