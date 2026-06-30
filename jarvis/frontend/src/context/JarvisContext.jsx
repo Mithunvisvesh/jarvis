@@ -98,6 +98,70 @@ export function JarvisProvider({ children }) {
   const [welcomeBackText, setWelcomeBackText] = useState('');
   const [dynamicGreeting, setDynamicGreeting] = useState('');
   
+  const [ttsEnabled, setTtsEnabled] = useState(() => {
+    try {
+      return localStorage.getItem('jarvis_tts_enabled') === 'true';
+    } catch {
+      return false;
+    }
+  });
+
+  const selectedVoiceRef = useRef(null);
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.speechSynthesis) return;
+
+    const updateVoices = () => {
+      const voices = window.speechSynthesis.getVoices();
+      const preferred = voices.find(v =>
+        v.name.includes('Google') || v.name.includes('Samantha') || v.name.includes('Daniel')
+      );
+      if (preferred) {
+        selectedVoiceRef.current = preferred;
+      }
+    };
+
+    updateVoices();
+    if (window.speechSynthesis.onvoiceschanged !== undefined) {
+      window.speechSynthesis.onvoiceschanged = updateVoices;
+    }
+  }, []);
+
+  const speakText = (text) => {
+    if (!ttsEnabled) return;
+    if (!window.speechSynthesis) return;
+    if (text.length > 300) return;
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.rate = 1.0;
+    utterance.pitch = 1.0;
+    utterance.volume = 0.9;
+    
+    if (selectedVoiceRef.current) {
+      utterance.voice = selectedVoiceRef.current;
+    } else {
+      const voices = window.speechSynthesis.getVoices();
+      const preferred = voices.find(v =>
+        v.name.includes('Google') || v.name.includes('Samantha') || v.name.includes('Daniel')
+      );
+      if (preferred) {
+        selectedVoiceRef.current = preferred;
+        utterance.voice = preferred;
+      }
+    }
+    window.speechSynthesis.speak(utterance);
+  };
+
+  const setTtsEnabledPersisted = (value) => {
+    setTtsEnabled(value);
+    try {
+      localStorage.setItem('jarvis_tts_enabled', String(value));
+    } catch {}
+    if (!value && window.speechSynthesis) {
+      window.speechSynthesis.cancel();
+    }
+  };
+  
   const [telemetry, setTelemetry] = useState({
     cpuLoad: 28,
     ramLoad: 54,
@@ -937,6 +1001,9 @@ export function JarvisProvider({ children }) {
       isConnected,
       isDeveloperMode,
       setIsDeveloperMode,
+      ttsEnabled,
+      setTtsEnabledPersisted,
+      speakText,
       currentRequestEvents,
       sendMessage,
       addReminder,
