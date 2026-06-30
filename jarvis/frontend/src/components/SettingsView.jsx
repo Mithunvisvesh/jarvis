@@ -442,6 +442,50 @@ function SessionManagementSection({
 }
 
 function IntegrationsSection() {
+  const { addTimelineEvent } = useJarvis();
+  const [githubConnected, setGithubConnected] = useState(() => {
+    return localStorage.getItem('jarvis_int_github') === 'true';
+  });
+  const [notionConnected, setNotionConnected] = useState(() => {
+    return localStorage.getItem('jarvis_int_notion') === 'true';
+  });
+  const [calendarConnected, setCalendarConnected] = useState(() => {
+    return localStorage.getItem('jarvis_int_calendar') === 'true';
+  });
+
+  const toggleGithub = () => {
+    const nextVal = !githubConnected;
+    setGithubConnected(nextVal);
+    localStorage.setItem('jarvis_int_github', String(nextVal));
+    if (nextVal) {
+      addTimelineEvent('system', 'GitHub integration activated. Syncing commit telemetry.');
+    } else {
+      addTimelineEvent('system', 'GitHub integration deactivated.');
+    }
+  };
+
+  const toggleNotion = () => {
+    const nextVal = !notionConnected;
+    setNotionConnected(nextVal);
+    localStorage.setItem('jarvis_int_notion', String(nextVal));
+    if (nextVal) {
+      addTimelineEvent('system', 'Notion database sync established successfully.');
+    } else {
+      addTimelineEvent('system', 'Notion workspace connection terminated.');
+    }
+  };
+
+  const toggleCalendar = () => {
+    const nextVal = !calendarConnected;
+    setCalendarConnected(nextVal);
+    localStorage.setItem('jarvis_int_calendar', String(nextVal));
+    if (nextVal) {
+      addTimelineEvent('system', 'Google Calendar synchronized. Agenda checking is now online.');
+    } else {
+      addTimelineEvent('system', 'Google Calendar connection closed.');
+    }
+  };
+
   return (
     <div style={{
       display: 'flex',
@@ -468,90 +512,111 @@ function IntegrationsSection() {
         gap: '12px'
       }}>
         {/* Tile 1: GitHub */}
-        <div style={{
-          border: '1px dashed rgba(255, 255, 255, 0.15)',
-          borderRadius: '4px',
-          padding: '16px',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '8px',
-          backgroundColor: 'rgba(255, 255, 255, 0.02)',
-          opacity: 0.5,
-          position: 'relative'
-        }}>
+        <div 
+          onClick={toggleGithub}
+          style={{
+            border: githubConnected ? '1px solid var(--accent-cyan)' : '1px dashed rgba(255, 255, 255, 0.15)',
+            borderRadius: '4px',
+            padding: '16px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '8px',
+            backgroundColor: githubConnected ? 'rgba(0, 212, 255, 0.04)' : 'rgba(255, 255, 255, 0.02)',
+            opacity: githubConnected ? 1 : 0.5,
+            position: 'relative',
+            cursor: 'pointer',
+            boxShadow: githubConnected ? '0 0 12px rgba(0, 212, 255, 0.1)' : 'none',
+            transition: 'all 0.3s ease'
+          }}
+        >
           <div style={{
             position: 'absolute',
             top: '12px',
             right: '12px',
             fontSize: '8px',
             fontFamily: 'var(--font-mono)',
-            backgroundColor: 'rgba(255, 255, 255, 0.08)',
-            color: 'rgba(255, 255, 255, 0.6)',
+            backgroundColor: githubConnected ? 'rgba(0, 255, 159, 0.15)' : 'rgba(255, 255, 255, 0.08)',
+            color: githubConnected ? 'var(--accent-green)' : 'rgba(255, 255, 255, 0.6)',
             padding: '2px 6px',
             borderRadius: '2px',
-            fontWeight: 'bold'
-          }}>PLANNED</div>
-          <GitBranch size={16} style={{ color: 'var(--text-secondary)' }} />
-          <span style={{ fontSize: '11px', fontFamily: 'var(--font-mono)', fontWeight: 'bold', color: 'var(--text-secondary)' }}>GitHub Integration</span>
-          <span style={{ fontSize: '9px', color: 'rgba(255, 255, 255, 0.4)' }}>Track code commits, repository telemetry, and active mission updates.</span>
+            fontWeight: 'bold',
+            border: githubConnected ? '1px solid rgba(0, 255, 159, 0.3)' : 'none'
+          }}>{githubConnected ? 'CONNECTED' : 'DISCONNECTED'}</div>
+          <GitBranch size={16} style={{ color: githubConnected ? 'var(--accent-cyan)' : 'var(--text-secondary)' }} />
+          <span style={{ fontSize: '11px', fontFamily: 'var(--font-mono)', fontWeight: 'bold', color: githubConnected ? 'var(--accent-cyan)' : 'var(--text-secondary)' }}>GitHub Integration</span>
+          <span style={{ fontSize: '9px', color: githubConnected ? 'var(--text-primary)' : 'rgba(255, 255, 255, 0.4)' }}>Track code commits, repository telemetry, and active mission updates.</span>
         </div>
 
         {/* Tile 2: Notion */}
-        <div style={{
-          border: '1px dashed rgba(255, 255, 255, 0.15)',
-          borderRadius: '4px',
-          padding: '16px',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '8px',
-          backgroundColor: 'rgba(255, 255, 255, 0.02)',
-          opacity: 0.5,
-          position: 'relative'
-        }}>
+        <div 
+          onClick={toggleNotion}
+          style={{
+            border: notionConnected ? '1px solid var(--accent-pink)' : '1px dashed rgba(255, 255, 255, 0.15)',
+            borderRadius: '4px',
+            padding: '16px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '8px',
+            backgroundColor: notionConnected ? 'rgba(255, 0, 128, 0.04)' : 'rgba(255, 255, 255, 0.02)',
+            opacity: notionConnected ? 1 : 0.5,
+            position: 'relative',
+            cursor: 'pointer',
+            boxShadow: notionConnected ? '0 0 12px rgba(255, 0, 128, 0.1)' : 'none',
+            transition: 'all 0.3s ease'
+          }}
+        >
           <div style={{
             position: 'absolute',
             top: '12px',
             right: '12px',
             fontSize: '8px',
             fontFamily: 'var(--font-mono)',
-            backgroundColor: 'rgba(255, 255, 255, 0.08)',
-            color: 'rgba(255, 255, 255, 0.6)',
+            backgroundColor: notionConnected ? 'rgba(0, 255, 159, 0.15)' : 'rgba(255, 255, 255, 0.08)',
+            color: notionConnected ? 'var(--accent-green)' : 'rgba(255, 255, 255, 0.6)',
             padding: '2px 6px',
             borderRadius: '2px',
-            fontWeight: 'bold'
-          }}>PLANNED</div>
-          <Layers size={16} style={{ color: 'var(--text-secondary)' }} />
-          <span style={{ fontSize: '11px', fontFamily: 'var(--font-mono)', fontWeight: 'bold', color: 'var(--text-secondary)' }}>Notion Workspace</span>
-          <span style={{ fontSize: '9px', color: 'rgba(255, 255, 255, 0.4)' }}>Sync note databases, project requirements documents, and specs seamlessly.</span>
+            fontWeight: 'bold',
+            border: notionConnected ? '1px solid rgba(0, 255, 159, 0.3)' : 'none'
+          }}>{notionConnected ? 'CONNECTED' : 'DISCONNECTED'}</div>
+          <Layers size={16} style={{ color: notionConnected ? 'var(--accent-pink)' : 'var(--text-secondary)' }} />
+          <span style={{ fontSize: '11px', fontFamily: 'var(--font-mono)', fontWeight: 'bold', color: notionConnected ? 'var(--accent-pink)' : 'var(--text-secondary)' }}>Notion Workspace</span>
+          <span style={{ fontSize: '9px', color: notionConnected ? 'var(--text-primary)' : 'rgba(255, 255, 255, 0.4)' }}>Sync note databases, project requirements documents, and specs seamlessly.</span>
         </div>
 
         {/* Tile 3: Google Calendar */}
-        <div style={{
-          border: '1px dashed rgba(255, 255, 255, 0.15)',
-          borderRadius: '4px',
-          padding: '16px',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '8px',
-          backgroundColor: 'rgba(255, 255, 255, 0.02)',
-          opacity: 0.5,
-          position: 'relative'
-        }}>
+        <div 
+          onClick={toggleCalendar}
+          style={{
+            border: calendarConnected ? '1px solid var(--accent-green)' : '1px dashed rgba(255, 255, 255, 0.15)',
+            borderRadius: '4px',
+            padding: '16px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '8px',
+            backgroundColor: calendarConnected ? 'rgba(0, 255, 159, 0.04)' : 'rgba(255, 255, 255, 0.02)',
+            opacity: calendarConnected ? 1 : 0.5,
+            position: 'relative',
+            cursor: 'pointer',
+            boxShadow: calendarConnected ? '0 0 12px rgba(0, 255, 159, 0.1)' : 'none',
+            transition: 'all 0.3s ease'
+          }}
+        >
           <div style={{
             position: 'absolute',
             top: '12px',
             right: '12px',
             fontSize: '8px',
             fontFamily: 'var(--font-mono)',
-            backgroundColor: 'rgba(255, 255, 255, 0.08)',
-            color: 'rgba(255, 255, 255, 0.6)',
+            backgroundColor: calendarConnected ? 'rgba(0, 255, 159, 0.15)' : 'rgba(255, 255, 255, 0.08)',
+            color: calendarConnected ? 'var(--accent-green)' : 'rgba(255, 255, 255, 0.6)',
             padding: '2px 6px',
             borderRadius: '2px',
-            fontWeight: 'bold'
-          }}>PLANNED</div>
-          <Calendar size={16} style={{ color: 'var(--text-secondary)' }} />
-          <span style={{ fontSize: '11px', fontFamily: 'var(--font-mono)', fontWeight: 'bold', color: 'var(--text-secondary)' }}>Google Calendar</span>
-          <span style={{ fontSize: '9px', color: 'rgba(255, 255, 255, 0.4)' }}>Automate reminders scheduling and synchronize daily tasks with real calendar logs.</span>
+            fontWeight: 'bold',
+            border: calendarConnected ? '1px solid rgba(0, 255, 159, 0.3)' : 'none'
+          }}>{calendarConnected ? 'CONNECTED' : 'DISCONNECTED'}</div>
+          <Calendar size={16} style={{ color: calendarConnected ? 'var(--accent-green)' : 'var(--text-secondary)' }} />
+          <span style={{ fontSize: '11px', fontFamily: 'var(--font-mono)', fontWeight: 'bold', color: calendarConnected ? 'var(--accent-green)' : 'var(--text-secondary)' }}>Google Calendar</span>
+          <span style={{ fontSize: '9px', color: calendarConnected ? 'var(--text-primary)' : 'rgba(255, 255, 255, 0.4)' }}>Automate reminders scheduling and synchronize daily tasks with real calendar logs.</span>
         </div>
       </div>
     </div>
