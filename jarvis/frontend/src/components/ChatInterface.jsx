@@ -118,7 +118,9 @@ export default function ChatInterface() {
     isDeveloperMode,
     setIsDeveloperMode,
     wipeSessionContext,
-    resetConversation
+    resetConversation,
+    speakText,
+    ttsEnabled
   } = useJarvis();
   const [input, setInput] = useState('');
   const [voiceError, setVoiceError] = useState(null);
@@ -185,6 +187,16 @@ export default function ChatInterface() {
       recognition.onerror = (event) => {
         console.error('Speech recognition error:', event.error);
         setIsListening(false);
+        if (event.error === 'not-allowed') {
+          setVoiceError("Microphone permission blocked. Please allow mic access in your browser settings.");
+        } else if (event.error === 'no-speech') {
+          setVoiceError("No speech detected. Try speaking closer to the mic.");
+        } else if (event.error === 'network') {
+          setVoiceError("Speech network error. Ensure internet connection.");
+        } else {
+          setVoiceError(`Microphone error: ${event.error}`);
+        }
+        setTimeout(() => setVoiceError(null), 6000);
       };
 
       recognition.onend = () => {
@@ -225,6 +237,19 @@ export default function ChatInterface() {
   };
 
   const stages = ['Analyzing Request', 'Routing Intent', 'Running System Tools', 'Synthesizing Response', 'Completed'];
+
+  const prevThinkingRef = useRef(false);
+  useEffect(() => {
+    if (prevThinkingRef.current === true && isThinking === false) {
+      if (ttsEnabled && messages.length > 0) {
+        const lastMsg = messages[messages.length - 1];
+        if (lastMsg && lastMsg.sender === 'jarvis') {
+          speakText(lastMsg.text);
+        }
+      }
+    }
+    prevThinkingRef.current = isThinking;
+  }, [isThinking, messages, ttsEnabled, speakText]);
 
   // Auto-scroll to bottom
   const scrollToBottom = () => {
