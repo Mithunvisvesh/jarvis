@@ -458,7 +458,7 @@ function IntegrationsSection() {
     setGithubConnected(nextVal);
     localStorage.setItem('jarvis_int_github', String(nextVal));
     if (nextVal) {
-      addTimelineEvent('system', 'GitHub integration activated. Syncing commit telemetry.');
+      addTimelineEvent('system', 'GitHub integration queued for v2. Roadmap feature activated.');
     } else {
       addTimelineEvent('system', 'GitHub integration deactivated.');
     }
@@ -469,7 +469,7 @@ function IntegrationsSection() {
     setNotionConnected(nextVal);
     localStorage.setItem('jarvis_int_notion', String(nextVal));
     if (nextVal) {
-      addTimelineEvent('system', 'Notion database sync established successfully.');
+      addTimelineEvent('system', 'Notion workspace sync queued for v2. Roadmap feature activated.');
     } else {
       addTimelineEvent('system', 'Notion workspace connection terminated.');
     }
@@ -480,7 +480,7 @@ function IntegrationsSection() {
     setCalendarConnected(nextVal);
     localStorage.setItem('jarvis_int_calendar', String(nextVal));
     if (nextVal) {
-      addTimelineEvent('system', 'Google Calendar synchronized. Agenda checking is now online.');
+      addTimelineEvent('system', 'Google Calendar integration queued for v2. Roadmap feature activated.');
     } else {
       addTimelineEvent('system', 'Google Calendar connection closed.');
     }
@@ -541,7 +541,7 @@ function IntegrationsSection() {
             borderRadius: '2px',
             fontWeight: 'bold',
             border: githubConnected ? '1px solid rgba(0, 255, 159, 0.3)' : 'none'
-          }}>{githubConnected ? 'CONNECTED' : 'DISCONNECTED'}</div>
+          }}>{githubConnected ? 'ENABLED (PLANNED)' : 'UNAVAILABLE'}</div>
           <GitBranch size={16} style={{ color: githubConnected ? 'var(--accent-cyan)' : 'var(--text-secondary)' }} />
           <span style={{ fontSize: '11px', fontFamily: 'var(--font-mono)', fontWeight: 'bold', color: githubConnected ? 'var(--accent-cyan)' : 'var(--text-secondary)' }}>GitHub Integration</span>
           <span style={{ fontSize: '9px', color: githubConnected ? 'var(--text-primary)' : 'rgba(255, 255, 255, 0.4)' }}>Track code commits, repository telemetry, and active mission updates.</span>
@@ -577,7 +577,7 @@ function IntegrationsSection() {
             borderRadius: '2px',
             fontWeight: 'bold',
             border: notionConnected ? '1px solid rgba(0, 255, 159, 0.3)' : 'none'
-          }}>{notionConnected ? 'CONNECTED' : 'DISCONNECTED'}</div>
+          }}>{notionConnected ? 'ENABLED (PLANNED)' : 'UNAVAILABLE'}</div>
           <Layers size={16} style={{ color: notionConnected ? 'var(--accent-pink)' : 'var(--text-secondary)' }} />
           <span style={{ fontSize: '11px', fontFamily: 'var(--font-mono)', fontWeight: 'bold', color: notionConnected ? 'var(--accent-pink)' : 'var(--text-secondary)' }}>Notion Workspace</span>
           <span style={{ fontSize: '9px', color: notionConnected ? 'var(--text-primary)' : 'rgba(255, 255, 255, 0.4)' }}>Sync note databases, project requirements documents, and specs seamlessly.</span>
@@ -613,7 +613,7 @@ function IntegrationsSection() {
             borderRadius: '2px',
             fontWeight: 'bold',
             border: calendarConnected ? '1px solid rgba(0, 255, 159, 0.3)' : 'none'
-          }}>{calendarConnected ? 'CONNECTED' : 'DISCONNECTED'}</div>
+          }}>{calendarConnected ? 'ENABLED (PLANNED)' : 'UNAVAILABLE'}</div>
           <Calendar size={16} style={{ color: calendarConnected ? 'var(--accent-green)' : 'var(--text-secondary)' }} />
           <span style={{ fontSize: '11px', fontFamily: 'var(--font-mono)', fontWeight: 'bold', color: calendarConnected ? 'var(--accent-green)' : 'var(--text-secondary)' }}>Google Calendar</span>
           <span style={{ fontSize: '9px', color: calendarConnected ? 'var(--text-primary)' : 'rgba(255, 255, 255, 0.4)' }}>Automate reminders scheduling and synchronize daily tasks with real calendar logs.</span>

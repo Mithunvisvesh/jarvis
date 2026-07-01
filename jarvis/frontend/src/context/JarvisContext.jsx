@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
 import { 
   sendChatMessage, 
   getReminders, 
@@ -127,9 +127,9 @@ export function JarvisProvider({ children }) {
     }
   }, []);
 
-  const speakText = (text) => {
+  const speakText = useCallback((text) => {
     if (!ttsEnabled) return;
-    if (!window.speechSynthesis) return;
+    if (typeof window === 'undefined' || !window.speechSynthesis) return;
     if (text.length > 300) return;
     window.speechSynthesis.cancel();
     const utterance = new SpeechSynthesisUtterance(text);
@@ -150,7 +150,7 @@ export function JarvisProvider({ children }) {
       }
     }
     window.speechSynthesis.speak(utterance);
-  };
+  }, [ttsEnabled]);
 
   const setTtsEnabledPersisted = (value) => {
     setTtsEnabled(value);
