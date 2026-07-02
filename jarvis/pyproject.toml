@@ -1,7 +1,7 @@
 [project]
 name = "jarvis"
 version = "0.1.0"
-description = ""
+description = "JARVIS: An Event-Driven AI Operating Companion built with Google ADK 2.0 and Gemini 2.5"
 authors = [
     {name = "Mithunvisvesh", email = "mithunvisvesh.s@gmail.com"},
 ]

@@ -42,6 +42,21 @@ graph TD
 
 ---
 
+## 🖼️ User Interface Preview
+
+*(Descriptive screenshot placeholders — to be uploaded manually)*
+
+#### 💬 1. Personalized Greeting & Chat Interface
+![Personalized Greeting & Chat View](./jarvis/docs/images/dashboard_chat.png)
+
+#### 🎯 2. Missions Checklist Tracker
+![Missions Tracker View](./jarvis/docs/images/dashboard_missions.png)
+
+#### ⚡ 3. Developer Mode Diagnostics Panel
+![Developer Mode Panel](./jarvis/docs/images/developer_mode.png)
+
+---
+
 ## 📊 Capability Status Matrix
 
 | Capability | Status | Notes |
@@ -119,3 +134,9 @@ Toggle **DEVELOPER MODE** under the `SYSTEM` tab in the sidebar to review:
 - Live event bus execution timelines.
 - Raw JSON state payloads.
 - MCP subprocess connection states.
+
+---
+
+## 🤖 AI Agentic Development Guide
+
+For details on the agentic development lifecycle, evaluation loops, local playgrounds, and pre-deployment workflows designed for AI coding assistants, refer to the **[GEMINI.md](./jarvis/GEMINI.md)** specification document.
